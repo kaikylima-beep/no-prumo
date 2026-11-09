@@ -13,7 +13,7 @@ Instale por cima (os dados continuam). Marque o que funcionou; o que não funcio
 
 **Ocultar valores**
 - [ ] Em Finanças, feche o olho. Fale "conta de luz 120 amanhã".
-- [ ] Bloqueie o celular: o aviso de amanhã deve dizer "Vence amanhã: Conta de luz", **sem o valor**. (Para ver na hora, fale "conta de luz 120 hoje" antes das 8h, ou espere o aviso.)
+- [ ] Amanhã às 8h, com o celular bloqueado, o aviso deve dizer "Vence hoje: Conta de luz", **sem o valor**.
 - [ ] Abra o olho de novo: os próximos avisos voltam a mostrar o valor.
 
 **Saudação**
