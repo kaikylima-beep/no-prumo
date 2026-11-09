@@ -49,14 +49,14 @@ Use `project_search` antes de ler um doc inteiro.
 2. `src/Drawer.js`: `APP_VERSION`.
 3. `README.md`: "Versão atual" e a seção Novidades/Correções.
 4. `npm test` passando.
-5. Commit em `main`, tag `v1.12.3`, push da tag. O GitHub gera o APK sozinho e cria uma Release com ele.
+5. Commit em `main` e push. Como a versão do `app.json` ainda não tem Release, o GitHub gera o APK sozinho e cria a Release `v1.12.3` com ele. (Não crie tags daqui: o envio de tags é bloqueado nesta sessão.)
 6. Conferir a execução (agente `conferencia`) e avisar o Kaiky que o APK está em **Releases**.
 7. Atualizar a memória do projeto e o Mapa do No Prumo.
 
 ## Build do APK (GitHub Actions)
 
 - Arquivo: `.github/workflows/build-apk.yml`.
-- Todo push em `main` roda só os testes. Tag `v*` ou "Run workflow" manual gera o APK.
+- Todo push em `main` roda os testes. Se a versão do `app.json` ainda não tem Release, gera também o APK e cria a Release. "Run workflow" manual (`gh workflow run build-apk.yml --ref main`) gera um APK de teste sem mudar a versão.
 - O workflow faz `expo prebuild`, copia `keystore/debug.keystore`, roda `assembleRelease` e confere tudo com `scripts/check-apk.sh` (pacote, versão, nome Prumo e assinatura).
 - Assinatura obrigatória (chave de teste pública do Expo, até a troca por chave própria):
   SHA-256 `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`. Se mudar, o APK não instala por cima e o Kaiky perde os dados.
