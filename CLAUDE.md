@@ -69,6 +69,7 @@ Use o agente certo e peça resposta curta. Não cole logs inteiros na conversa p
 
 | Agente | Quando |
 |---|---|
+| `design` | UI/UX: desenhar tela nova ou mudada antes do código |
 | `codigo` | Mudanças em `src/`, `App.js`, `plugins/` |
 | `voz` | `speech.js`, `parser.js`, frases do campo Testes |
 | `testes` | Rodar `npm test` e arrumar teste quebrado |
@@ -76,6 +77,9 @@ Use o agente certo e peça resposta curta. Não cole logs inteiros na conversa p
 | `conferencia` | Conferir o APK gerado e os textos novos no bundle |
 | `visual` | Prints no navegador (versão web) |
 | `documentos` | README, memória do projeto, campo Testes, Mapa |
+| `marketing` | Divulgação (só quando o Kaiky pedir; nada sai antes de fev/2027) |
+
+Linha de produção completa de uma versão: comando `/versao <número e tema>` (`.claude/commands/versao.md`).
 
 ## Comandos
 
