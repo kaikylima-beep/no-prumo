@@ -518,7 +518,10 @@ const FIN_STRONG = /\b(salario|bonus|aluguel|fatura|boleto|gastei|paguei|recebi|
 const INCOME_KW = /\b(recebi|receber|recebo|salario|bonus|renda|freela|freelance|deposito|rendimentos?|reembolso|vendi|dividendos?|decimo\s+terceiro)\b/;
 const STUDY_KW = /\b(prova|provas|teste|exame|seminario|apresentacao|estudar|estudo|estudos|materias?|aulas?|simulados?|revisar|revisao|tcc|monografia|relatorio|laboratorio|entrega|entregar|faculdade|trabalho\s+de|lista\s+de\s+exercicios|exercicios|artigo|defesa|capitulo)\b/;
 const FUTURE_INTENT = /\b(preciso|tenho\s+que|tenho\s+de|nao\s+esquecer|vou|pagar|receber|vence|vencimento|a\s+pagar|fazer\s+(?:o|um|uma)\s+(?:pix|transferencia|deposito)|mandar|transferir|depositar)\b/;
-const PAST_FIN_VERB = /\b(gastei|paguei|comprei|recebi|transferi|depositei)\b/;
+const PAST_FIN_VERB = /\b(gastei|paguei|comprei|recebi|transferi|depositei|fiz|mandei|enviei)\b/;
+// 1.12.3: dinheiro dito com o verbo no infinitivo no começo ("fazer o pix…", "mandar 50…",
+// "transferir 100…") ainda vai acontecer: fica a pagar, qualquer que seja a palavra depois
+const INTENT_START = /^\s*(?:(?:eu|preciso(?:\s+de)?|tenho\s+que|tenho\s+de|vou|devo|nao\s+esquecer\s+de)\s+)?(?:fazer|mandar|enviar|transferir|depositar|pagar)\b/;
 const TASK_VERB = /^\s*(?:(?:eu|preciso(?:\s+de)?|tenho\s+que|tenho\s+de|vou|quero|devo|nao\s+esquecer\s+de|nao\s+esquece\s+de)\s+)?(comprar|lavar|limpar|arrumar|ligar|marcar|levar|buscar|trocar|consertar|fazer|ler|separar|organizar|tirar|cortar|regar|passar|cozinhar|varrer|devolver|enviar|mandar|responder|agendar|ver|visitar|tomar|colocar|guardar|estender|dobrar|montar|instalar|imprimir|escrever|correr|treinar|caminhar)\b/;
 
 const count = (re, s) => (s.match(re) || []).length;
@@ -597,7 +600,7 @@ export function guessFinance(text, income) {
 // ---------- título ----------
 
 const LEAD_RE = /^(?:[\s,.;:!?-]|\b(?:e|ai|entao|tambem|alem\s+disso|depois|eu|preciso(?:\s+de)?|tenho\s+que|tenho\s+de|tenho|vou|quero|devo|nao\s+esquecer\s+de|nao\s+esquece\s+de|lembrete(?:\s+de)?|anot\w+|adicion\w+|colocar|coloca|um|uma|para|pra|que|de|da|do)\b)+/;
-const LEAD_FIN_RE = /^(?:[\s,.;:!?-]|\b(?:e|eu|fazer|faz|mandar|manda|preciso(?:\s+de)?|tenho\s+que|vou|devo|gastei|paguei|comprei|recebi|transferi|vou\s+receber|vou\s+pagar|tenho\s+que\s+pagar|preciso\s+pagar|pagar|receber|pago|recebo|valor|total|de|do|da|no|na|em|um|uma|o|a|com|ai|meu|minha)\b)+/;
+const LEAD_FIN_RE = /^(?:[\s,.;:!?-]|\b(?:e|eu|fazer|faz|fiz|mandar|manda|mandei|enviar|enviei|preciso(?:\s+de)?|tenho\s+que|vou|devo|gastei|paguei|comprei|recebi|transferi|vou\s+receber|vou\s+pagar|tenho\s+que\s+pagar|preciso\s+pagar|pagar|receber|pago|recebo|valor|total|de|do|da|no|na|em|um|uma|o|a|com|ai|meu|minha)\b)+/;
 const TAIL_RE = /(?:[\s,.;:!?-]|\b(?:pro|pra|para|no|na|em|ate|de|do|da|dia|e|que|vence|vencimento|o|a|os|as|ai|com|as)\b)+$/;
 
 function finishTitle(c, fin) {
@@ -608,7 +611,11 @@ function finishTitle(c, fin) {
     if (c.del(fin ? LEAD_FIN_RE : LEAD_RE)) changed = true;
     if (c.del(TAIL_RE)) changed = true;
   }
-  const s = c.o.replace(/\s+/g, ' ').trim();
+  let s = c.o.replace(/\s+/g, ' ').trim();
+  // 1.12.3: o valor sai do meio e deixa duas preposições juntas ("transferência de pra mãe")
+  s = s.replace(/\b(?:de|do|da)\s+(pra|pro|para)\b/gi, '$1');
+  // "pro João" sozinho no título fica "Para João"
+  if (fin) s = s.replace(/^(?:pro|pra)\b/i, 'para');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
@@ -647,6 +654,7 @@ const FILLER = new Set([
   'la', 'ai', 'tambem', 'ainda', 'isso', 'esse', 'essa', 'aquele', 'aquela', 'aqui', 'ali', 'ne',
 ]);
 const MAX_SHORT_WORDS = 4;
+const MODAL_WORD = /^(?:preciso|vou|devo|quero)$/;
 
 export function abbreviate(title) {
   if (!title) return title;
@@ -655,6 +663,12 @@ export function abbreviate(title) {
     .split(/\s+/)
     .map((w) => w.replace(/[,;:.!?]+$/, ''))
     .filter(Boolean);
+  // 1.12.3: o título curto começa no verbo de ação ("… eu tenho que lavar o carro" → "Lavar carro"),
+  // quando antes dele só vem contexto (nenhum outro verbo no infinitivo)
+  const fw = words.map((w) => fold(w));
+  const isInf = (w) => /^[a-z]{2,}(?:ar|er|ir|or)$/.test(w);
+  const iv = fw.findIndex((w, i) => i > 0 && isInf(w) && (MODAL_WORD.test(fw[i - 1]) || (/^(?:que|de)$/.test(fw[i - 1]) && fw[i - 2] === 'tenho')));
+  if (iv > 0 && !fw.slice(0, iv).some(isInf)) words = words.slice(iv);
   const verb = words[0];
   if (words.length > 1 && LIGHT_VERB.test(fold(words[0]))) words = words.slice(1);
   let kept = words.filter((w) => !FILLER.has(fold(w)));
@@ -669,6 +683,12 @@ export function abbreviate(title) {
 
 const CONDITION_RE =
   /\b(?:quando|assim\s+que|depois\s+que|logo\s+que|antes\s+de)\s+(?:eu\s+)?(?:chegar|sair|voltar|acordar|terminar|levantar|estiver|for|dormir)\b(?:\s+(?!(?:eu\s+)?(?:tenho|preciso|vou|devo|quero)\b)(?![a-z]+(?:ar|er|ir)\b)[^\s,]+){0,4}/;
+
+// 1.12.3: contexto no gerúndio no começo da frase não é o assunto: "chegando em casa eu tenho
+// que lavar o carro", "saindo do trabalho preciso passar no mercado". Só sai quando depois dele
+// vem o pedido (tenho que, preciso, vou… ou um verbo no infinitivo).
+const GERUND_CONDITION_RE =
+  /^\s*(?:(?:e|ai|entao)\s+)?(?!quando\b)(?:indo|[a-z]{2,}(?:ando|endo|indo))\b(?:\s+(?!(?:eu\s+)?(?:tenho|preciso|vou|devo|quero)\b)(?![a-z]+(?:ar|er|ir)\b)[^\s,]+){0,4}(?=\s*,?\s*(?:eu\s+)?(?:tenho|preciso|vou|devo|quero|[a-z]+(?:ar|er|ir))\b)/;
 
 export function parseSegment(seg, today, forceKind, now = new Date(), opts = {}) {
   const f0 = fold(seg);
@@ -689,12 +709,14 @@ export function parseSegment(seg, today, forceKind, now = new Date(), opts = {})
 
   const finScore = count(FIN_KW, f0) + count(FIN_STRONG, f0);
   const looseNum = lastLooseNumber(c.f);
-  const startsWithTaskVerb = TASK_VERB.test(f0) || (finScore === 0 && INFINITIVE.test(f0));
+  // 1.12.3: o contexto do começo ("voltando da faculdade…") não decide a área nem o verbo
+  const fAsk = f0.replace(GERUND_CONDITION_RE, ' ').trim();
+  const startsWithTaskVerb = TASK_VERB.test(fAsk) || (finScore === 0 && INFINITIVE.test(fAsk));
 
   let kind = forceKind;
   if (!kind) {
     if (amount !== null) kind = 'finance';
-    else if (STUDY_KW.test(f0)) kind = 'study';
+    else if (STUDY_KW.test(fAsk)) kind = 'study';
     else if (rep && !monthly) kind = 'task'; // "de 8 em 8 horas", "toda segunda": lembrete, não dinheiro
     else if (looseNum && (finScore >= 1 || (!startsWithTaskVerb && !explicitDate))) kind = 'finance';
     else if (finScore >= 2 && PAST_FIN_VERB.test(f0)) kind = 'finance';
@@ -704,6 +726,7 @@ export function parseSegment(seg, today, forceKind, now = new Date(), opts = {})
 
   if (kind === 'finance') {
     c.take(CONDITION_RE);
+    c.take(GERUND_CONDITION_RE);
     if (amount === null) amount = extractLooseNumber(c);
     const income = INCOME_KW.test(f0);
     // compra no cartão ("comprei um tênis de 300 no cartão Nubank"): o título é o que foi comprado
@@ -727,7 +750,7 @@ export function parseSegment(seg, today, forceKind, now = new Date(), opts = {})
     let status;
     if (PAST_FIN_VERB.test(f0)) status = 'paid';
     else if (d > today) status = 'pending';
-    else if (FUTURE_INTENT.test(f0) || monthly) status = 'pending';
+    else if (FUTURE_INTENT.test(f0) || INTENT_START.test(f0) || monthly) status = 'pending';
     else status = 'paid';
     return {
       kind,
@@ -745,8 +768,9 @@ export function parseSegment(seg, today, forceKind, now = new Date(), opts = {})
     };
   }
 
-  // "quando eu chegar em casa ...": condição, não faz parte do título
+  // "quando eu chegar em casa ...", "chegando em casa ...": condição, não faz parte do título
   c.take(CONDITION_RE);
+  c.take(GERUND_CONDITION_RE);
   // "às 10" dito hoje depois das 10h: quer dizer 22h (se não falou "da manhã")
   if (times.length && !rep && (!date || date === today) && !/\bmanha\b|\bcedo\b/.test(f0) && !rel) {
     const hm = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;

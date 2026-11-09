@@ -9,6 +9,8 @@ Versão atual: **1.12.3**
 - **Restaurar o backup refaz os avisos.** Antes, quem restaurava num celular novo ficava sem nenhum lembrete, e no mesmo celular continuavam tocando avisos de coisas que não existiam mais. "Voltar ao que eu tinha" também refaz.
 - **"Ocultar valores" vale para os avisos.** Com o olho fechado em Finanças, o aviso diz "Vence hoje: Conta de luz", sem o valor, que aparecia na tela de bloqueio.
 - **A saudação bate com a tela.** "Você tem 2 tarefas para hoje" é o mesmo número do destaque de Tarefas (antes contava também as de amanhã e as sem data). O app só cobra uma área quando há algo vencendo hoje ou atrasado: uma prova daqui a 6 dias não gera mais "você precisa concluir seus lembretes de Estudos".
+- **Voz (campo Testes):** o começo da frase que só dá contexto sai do título: "chegando em casa eu tenho que lavar o carro" vira "Lavar carro" (vale para saindo, voltando, indo…). O título curto começa no verbo de ação.
+- **Voz:** dinheiro dito com o verbo no começo ("fazer o pix…", "mandar 50 reais…", "transferir 100…") fica **a pagar**, mesmo quando o Android ouve "pics". No passado ("fiz o pix", "mandei") fica pago. "Mandar 50 reais pro Caio" vira "Para Caio", e não "Pro Caio".
 
 ## Novidades da 1.12.2 · Ajustes mais limpos
 - Ocupação e estado saíram do meio dos Ajustes: ficam em "Ajustar perfil", embaixo da idade.

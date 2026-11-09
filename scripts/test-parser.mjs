@@ -1290,6 +1290,28 @@ export default {
   ok('corrigir o nome de um item falado ensina o app', /learnVoice\(diffWords\(item\.title/.test(es), true);
 }
 
+// ---- 1.12.3: campo Testes (frases do celular, com nomes trocados). Regras gerais, não frase a frase.
+// 1) contexto no gerúndio no começo não entra no título
+check('chegando em casa eu tenho que lavar o carro', [{ kind: 'task', title: 'Lavar carro' }], SHORT);
+check('Chegando em casa eu tenho que lavar o carro às 10 da noite', [{ kind: 'task', title: 'Lavar o carro', date: TODAY, time: '22:00' }]);
+check('saindo do trabalho eu preciso passar no mercado', [{ kind: 'task', title: 'Passar no mercado' }]);
+check('voltando da faculdade vou comprar pão', [{ kind: 'task', title: 'Comprar pão' }]);
+check('indo pra academia tenho que levar a garrafa', [{ kind: 'task', title: 'Levar a garrafa' }]);
+check('estudando para a prova', [{ kind: 'study', title: 'Estudando para a prova' }]); // sem pedido depois: fica
+check('saindo da aula preciso pagar o boleto 80 reais', [{ kind: 'finance', title: 'Boleto', amount: 80, status: 'pending' }]);
+// 2) título curto começa no verbo de ação
+check('no caminho eu tenho que passar no banco', [{ kind: 'task', title: 'Passar banco' }], SHORT);
+check('comprar o presente que vou entregar', [{ title: 'Comprar presente vou entregar' }], SHORT); // já começa num verbo: não corta
+// 3) dinheiro com verbo no infinitivo no começo é a pagar; no passado é pago
+check('fazer o pics do Rafa de 60 reais', [{ kind: 'finance', amount: 60, status: 'pending' }]); // "pics" = erro de ouvido: dicionário pessoal
+check('fazer o pix do Rafa de 60 reais', [{ kind: 'finance', title: 'Pix do Rafa', amount: 60, status: 'pending' }]);
+check('mandar 50 reais pro Caio', [{ kind: 'finance', title: 'Para Caio', amount: 50, status: 'pending' }]);
+check('transferir 100 reais para a Bia', [{ kind: 'finance', amount: 100, status: 'pending' }]);
+check('fazer uma transferência de 200 pra minha mãe', [{ kind: 'finance', title: 'Transferência pra minha mãe', amount: 200, status: 'pending' }]);
+check('fiz o pix do Rafa de 60 reais', [{ kind: 'finance', title: 'Pix do Rafa', amount: 60, status: 'paid' }]);
+check('mandei 50 reais pro Caio', [{ kind: 'finance', amount: 50, status: 'paid' }]);
+check('paguei a luz 120', [{ kind: 'finance', amount: 120, status: 'paid' }]);
+
 // ---- 1.12.3: avisos depois de restaurar, valores escondidos nos avisos, saudação
 {
   const ok = (name, got, exp) => {
