@@ -11,7 +11,7 @@ Faltam os docs do Projeto do claude.ai (memória completa e plano antigo): quand
 
 ## Decisões em vigor
 - **Finanças:** nada de função nova grande até o piloto. **Pode** (decisão de 09/11): tirar informação redundante, tirar o que não faz sentido para a realidade de todo mundo, corrigir erros de lógica e acrescentar algo com propósito claro. **Não pode:** tirar função pronta sem motivo. Finanças importa para o aluno que trabalha (CLT/estágio), paga contas e mora sozinho ou divide.
-- **Notas e faltas entram no plano** (09/11, antes "seguradas"). Nota: cada professor calcula de um jeito, então o aluno **anota cada nota que tirou** (P1, trabalho, lista…) e, se quiser, a fórmula do professor; o app não impõe uma fórmula. Serve também porque o professor demora a lançar no sistema. Faltas: por matéria, com aviso perto do limite.
+- **Notas e faltas viram a 1.13** (09/11, antes "seguradas"; os horários fixos passam para a 1.14). Nota: cada professor calcula de um jeito, então o aluno **anota cada nota que tirou** (P1, trabalho, lista…) e, se quiser, a fórmula do professor; o app não impõe uma fórmula. Serve também porque o professor demora a lançar no sistema. Faltas: por matéria, com aviso perto do limite.
 - **Responder perguntas pela voz** (ideia aprovada, 09/11): "o que eu tenho amanhã?", "quanto gastei com iFood este mês?", "quando é a prova de cálculo?". Tudo no celular.
 - **Chave de assinatura própria antes de divulgar.** Trocar enquanto só o Kaiky usa (backup → instalar → restaurar).
 - Divulgação só na recepção de calouros da UTFPR (fev/2027).
@@ -20,14 +20,34 @@ Faltam os docs do Projeto do claude.ai (memória completa e plano antigo): quand
 1.1 primeiro APK · 1.2 listas e agenda · 1.3 Simples/Avançado · 1.4 repetições e botões no aviso · 1.5 saudação · 1.6 orçamento · 1.7 painéis e importar extrato · 1.8 contas e transferências · 1.9 Finanças separadas e visual No Prumo · 1.10 de onde vem o dinheiro · 1.11 backup · 1.12 matérias · 1.12.1 voz que entende · 1.12.2 ajustes mais limpos · **1.12.3** avisos depois do backup, valores escondidos nos avisos, saudação certa, frases do campo Testes.
 Detalhe de cada uma: `README.md`.
 
-## Fila (na ordem)
+## Programação (datas de referência)
+Ritmo: uma versão por semana, com 3 dias de uso no celular antes da próxima. As datas andam se o teste achar problema: corrigir vem antes de começar a próxima.
+
+| Semana | Versão | Tema |
+|---|---|---|
+| 09/11 – 15/11 | **1.12.3** | Correções + campo Testes · **em teste no celular** |
+| 16/11 – 22/11 | **1.13** | Notas e faltas |
+| 23/11 – 29/11 | **1.14** | Meus horários fixos (+ troca da chave de assinatura) |
+| 30/11 – 13/12 | **1.15** | Seu dia (tela Hoje) · 2 semanas, é a maior |
+| 14/12 – 20/12 | **1.16** | Revisões automáticas |
+| 21/12 – 03/01 | — | Pausa de fim de ano (só correções, se precisar) |
+| 04/01 – 10/01 | **1.17** | Backup na nuvem |
+| 11/01 – 31/01 | **Antes de divulgar** | Teste com colegas, Xiaomi/Samsung, passo a passo do APK, 3 dias rodando bem |
+| fev/2027 | **Divulgação** | Recepção de calouros da UTFPR |
+
+## Fila (detalhe de cada versão)
 1. **1.12.3** · em teste no celular.
-2. **1.13 · Meus horários fixos:** aulas, estágio e compromissos numa grade semanal; "estágio de segunda a sexta das 13 às 18" pela voz; "aula de cálculo segunda e quarta 10h" cria a matéria; exceções (feriado, sem aula, semana de provas, reposição); feriado municipal à mão.
-3. **Notas e faltas** · posição a decidir (sugestão: logo depois da 1.13, porque a falta usa a grade de aulas).
-4. **1.14 · Seu dia:** tela Hoje abre o app no lugar da Agenda; linha do tempo do dia; horários livres; Simples "Agora / Depois / Ainda hoje"; resumo de manhã e aviso antes da aula (opcionais).
-5. **1.15 · Revisões automáticas:** cada prova gera 2–3 sessões, só nos horários livres.
-6. **1.16 · Backup na nuvem:** salva sozinho numa pasta do Drive, guarda 7 cópias, avisa se falhar.
-7. **Antes de divulgar:** "Experimente falar" em Finanças e Estudos; teste com 2 colegas sem explicar; transição suave entre abas; chave própria; passo a passo para instalar o APK; nome e marca (INPI); voz "no celular" nos aparelhos dos colegas; avisos em Xiaomi e Samsung; 3 dias rodando bem.
+2. **1.13 · Notas e faltas** (decidido em 09/11):
+   - **Notas:** por matéria, o aluno anota cada avaliação (P1, trabalho, lista…) com a nota que tirou e, se quiser, o peso ou a fórmula do professor (cada professor calcula de um jeito; o app não impõe). Mostra a média só quando a pessoa deu os pesos. Pela voz: "tirei 7,5 na P1 de cálculo".
+   - **Faltas:** por matéria, usando os horários que a matéria já tem (1.12). Depois da aula, aviso opcional "Foi na aula de Cálculo 2?" com Fui / Faltei. Limite de faltas (padrão 25% das aulas, editável) e aviso perto do limite. Pela voz: "faltei na aula de física".
+   - Simples: lista calma por matéria. Avançado: no cartão da matéria.
+3. **1.14 · Meus horários fixos:** aulas, estágio e compromissos numa grade semanal; "estágio de segunda a sexta das 13 às 18" pela voz; "aula de cálculo segunda e quarta 10h" cria a matéria; exceções (feriado, sem aula, semana de provas, reposição); feriado municipal à mão. Junto: **trocar a chave de assinatura** (backup → instalar → restaurar).
+4. **1.15 · Seu dia:** tela Hoje abre o app no lugar da Agenda; linha do tempo do dia; horários livres; Simples "Agora / Depois / Ainda hoje"; resumo de manhã e aviso antes da aula (opcionais).
+5. **1.16 · Revisões automáticas:** cada prova gera 2–3 sessões, só nos horários livres.
+6. **1.17 · Backup na nuvem:** salva sozinho numa pasta do Drive, guarda 7 cópias, avisa se falhar.
+7. **Antes de divulgar:** "Experimente falar" em Finanças e Estudos; teste com 2 colegas sem explicar; transição suave entre abas; passo a passo para instalar o APK; nome e marca (INPI); voz "no celular" nos aparelhos dos colegas; avisos em Xiaomi e Samsung; 3 dias rodando bem.
+
+Sem data, quando couber entre versões (correção x.y.Z): simplificar a primeira tela de Finanças (menos números repetidos, sem tirar função) e o microfone respondendo perguntas (candidato a versão própria depois da 1.17).
 
 ## Depois (sem data)
 - Estudos: cadastrar várias matérias falando em sequência; feriados municipais automáticos; conferir a tabela de feriados todo ano.
