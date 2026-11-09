@@ -11,7 +11,7 @@ Regra principal: **nada de regra para uma frase ou palavra específica.**
 - Palavra certa e item errado (tipo "Regra") → regra geral de português, testada em várias frases parecidas.
 
 Fluxo:
-1. Leia a frase e a correção planejada no doc `claude/prumo-testes.md` do Projeto (use project_search/project_read).
+1. Leia a frase e a correção planejada em `docs/memoria/testes.md`.
 2. Escreva o caso no banco de frases de `scripts/test-parser.mjs` (nomes de pessoas trocados) e veja falhar.
 3. Corrija com regra geral e acrescente 2 ou 3 frases parecidas que também devem passar.
 4. `npm test 2>&1 | tail -5`: todas as anteriores continuam passando.

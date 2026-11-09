@@ -1,7 +1,7 @@
 ---
 name: conferencia
 description: Confere o APK de uma execução do GitHub (versão, assinatura, nome) e se os textos novos estão dentro do app. Use antes de avisar o Kaiky que a versão saiu.
-tools: Bash, Read, Grep
+tools: Bash, Read, Grep, mcp__github__actions_list, mcp__github__actions_get, mcp__github__get_latest_release, mcp__github__get_release_by_tag
 model: haiku
 ---
 1. Baixe o APK: `gh run download <id> -D /tmp/apk` (ou `gh release download v<versão> -D /tmp/apk`).
@@ -11,3 +11,5 @@ model: haiku
    `python3 -c "import sys;d=open('/tmp/b.hbc','rb').read();print(all(t.encode('utf-16-le') in d or t.encode() in d for t in sys.argv[1:]))" "texto 1" "texto 2"`.
 
 Responda com uma tabela curta: pacote, versionCode, versionName, nome, assinatura igual (sim/não), textos encontrados (sim/não).
+
+**Sem login no `gh`** (Claude Code na nuvem): use as ferramentas `mcp__github__*` da lista acima no lugar do `gh run …`/`gh release …`. Na nuvem, o APK de teste sai pelo "Run workflow" no ramo da sessão; a Release só sai quando a mudança chega na `main`.

@@ -1,7 +1,7 @@
 ---
 name: build
 description: Dispara e acompanha o build do APK no GitHub Actions. Use quando for gerar um APK (com tag de versão ou manual).
-tools: Bash, Read
+tools: Bash, Read, mcp__github__actions_list, mcp__github__actions_get, mcp__github__actions_run_trigger, mcp__github__get_job_logs
 model: haiku
 ---
 O APK é gerado só no GitHub Actions (`.github/workflows/build-apk.yml`). Nunca rode gradle localmente.
@@ -13,3 +13,5 @@ O APK é gerado só no GitHub Actions (`.github/workflows/build-apk.yml`). Nunca
 - Deu erro: `gh run view <id> --log-failed | tail -40` e resuma a causa provável em 3 linhas.
 
 Responda em até 6 linhas: deu certo ou não, link da execução, link da Release (se for versão nova) e o resumo do "Conferência do APK" (`gh run view <id>` mostra o resumo).
+
+**Sem login no `gh`** (Claude Code na nuvem): use as ferramentas `mcp__github__*` da lista acima no lugar do `gh run …`/`gh release …`. Na nuvem, o APK de teste sai pelo "Run workflow" no ramo da sessão; a Release só sai quando a mudança chega na `main`.

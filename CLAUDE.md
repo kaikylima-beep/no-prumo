@@ -8,14 +8,14 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 
 | Precisa de… | Onde |
 |---|---|
-| Decisões, regras de negócio, ordem das versões | Doc `prumo-memoria-do-projeto.md` no Projeto "Prumo" do claude.ai (ferramenta Projects) |
-| Frases que o app entendeu errado | Doc `claude/prumo-testes.md` no Projeto |
-| Plano da voz | Doc `claude/prumo-analise-voz.md` no Projeto |
-| Cores, telas, ícone | Doc `claude/prumo-marca-e-visual.md` no Projeto |
+| Decisões, regras de negócio, ordem das versões | `docs/memoria/plano.md` |
+| Frases que o app entendeu errado (campo Testes) | `docs/memoria/testes.md` |
+| Plano da voz | `docs/memoria/voz.md` (enquanto não existir: doc `claude/prumo-analise-voz.md` no Projeto do claude.ai) |
+| Cores, telas, ícone | `docs/memoria/marca.md` (enquanto não existir: doc `claude/prumo-marca-e-visual.md` no Projeto do claude.ai) |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
 
-Use `project_search` antes de ler um doc inteiro.
+A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude.ai lerem a mesma coisa. Nada de dado pessoal real lá.
 
 ## Como falar com o Kaiky
 
@@ -41,7 +41,7 @@ Use `project_search` antes de ler um doc inteiro.
 
 - Correção = x.y.Z (só conserta). Versão nova = x.Y (um tema). 2.0 = quebra "tudo no celular e sem internet".
 - Um tema por versão; a próxima só começa depois que a anterior passar no celular.
-- Toda versão tem o **campo Testes**: as frases abertas de `claude/prumo-testes.md` viram casos no `npm test` (nomes trocados).
+- Toda versão tem o **campo Testes**: as frases abertas de `docs/memoria/testes.md` viram casos no `npm test` (nomes trocados).
 
 ### Para fechar uma versão (ex.: 1.12.3)
 
@@ -51,7 +51,9 @@ Use `project_search` antes de ler um doc inteiro.
 4. `npm test` passando.
 5. Commit em `main` e push. Como a versão do `app.json` ainda não tem Release, o GitHub gera o APK sozinho e cria a Release `v1.12.3` com ele. (Não crie tags daqui: o envio de tags é bloqueado nesta sessão.)
 6. Conferir a execução (agente `conferencia`), baixar o APK da Release e mandar no chat (SendUserFile), com a lista de tarefas do Kaiky.
-7. Atualizar a memória do projeto e o Mapa do No Prumo.
+7. Atualizar `docs/memoria/` (plano e testes) e o Mapa do No Prumo.
+
+**No Claude Code na nuvem:** trabalhe no ramo da sessão e gere um APK de teste com "Run workflow" nesse ramo (ferramenta `mcp__github__actions_run_trigger`, `run_workflow`). Leve para `main` (que cria a Release) só quando o Kaiky aprovar. O `gh` não tem login nessas sessões: acompanhe e baixe pelo `mcp__github__actions_list` / `actions_get`.
 
 ## Build do APK (GitHub Actions)
 

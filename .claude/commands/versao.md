@@ -6,7 +6,7 @@ Pedido do Kaiky: $ARGUMENTS
 
 Você é o gerente. Não faça o trabalho dos setores: chame cada agente com uma tarefa clara e peça resposta curta. Ao Kaiky, mostre só uma linha por etapa ("Desenvolvimento: pronto, 3 arquivos").
 
-**0. Entender o pedido.** Leia o necessário (memória do projeto e `claude/prumo-testes.md` no Projeto). Se faltar uma decisão que só o Kaiky pode tomar, pergunte antes. Defina o número da versão (correção = x.y.Z).
+**0. Entender o pedido.** Leia o necessário (`docs/memoria/plano.md` e `docs/memoria/testes.md`). Se faltar uma decisão que só o Kaiky pode tomar, pergunte antes. Defina o número da versão (correção = x.y.Z).
 
 **1. Desenvolvimento** — agente `codigo` (telas e funções) e/ou `voz` (fala e frases). Podem trabalhar juntos se mexem em arquivos diferentes.
 
