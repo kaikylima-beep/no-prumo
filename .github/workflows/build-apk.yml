@@ -1,0 +1,101 @@
+# Testes em todo push. APK quando há tag de versão (v1.12.3) ou quando alguém clica em "Run workflow".
+name: Gerar APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  apk:
+    name: APK
+    needs: testes
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Versão no app.json
+        id: ver
+        run: |
+          V=$(node -p "require('./app.json').expo.version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$V" ]]; then
+            echo "A tag ${GITHUB_REF#refs/tags/} não bate com app.json ($V)"; exit 1
+          fi
+
+      - name: Gerar a pasta android (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+        env:
+          CI: 1
+          EXPO_NO_TELEMETRY: 1
+
+      - name: Assinatura de sempre e memória do Gradle
+        run: |
+          cp keystore/debug.keystore android/app/debug.keystore
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+
+      - name: Gerar o APK (assembleRelease)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          NODE_ENV: production
+
+      - name: Conferir o APK
+        run: bash scripts/check-apk.sh android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Dar nome ao APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk "Prumo-${{ steps.ver.outputs.version }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Prumo-${{ steps.ver.outputs.version }}
+          path: Prumo-${{ steps.ver.outputs.version }}.apk
+          retention-days: 30
+
+      - name: Criar a Release com o APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.ver.outputs.version }}
+          NOTES=$(awk -v v="$V" '
+            /^## / { on = (index($0, " " v " ") || index($0, " " v ":") || $0 ~ (" " v "$")) }
+            on' README.md)
+          gh release create "v$V" "Prumo-$V.apk" --title "No Prumo $V" --notes "${NOTES:-Versão $V}"

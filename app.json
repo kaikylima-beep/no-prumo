@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Prumo",
+    "slug": "meu-organizador",
+    "version": "1.12.2",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meuorganizador.app"
+    },
+    "android": {
+      "package": "com.meuorganizador.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#12151C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ],
+      "versionCode": 21,
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permitir que o app use o microfone para ouvir o que você fala.",
+          "speechRecognitionPermission": "Permitir que o app reconheça sua fala.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que o app use uma foto sua no perfil.",
+          "cameraPermission": false
+        }
+      ],
+      "./plugins/withShareTarget"
+    ],
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#12151C"
+    }
+  }
+}
