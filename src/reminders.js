@@ -30,6 +30,12 @@ export const channelId = () => CHANNELS[alertStyle];
 export const VIBRATION_PATTERN = VIBRATION;
 export const isSoundOn = () => alertStyle === 'som';
 
+// 1.12.3: com "Ocultar valores" ligado, o aviso não mostra o valor (ele aparece na tela de bloqueio)
+let hideMoney = false;
+export function setHideMoney(v) {
+  hideMoney = !!v;
+}
+
 // Botões que aparecem no próprio aviso. Funcionam com o app fechado
 // (tratados em src/actions.js e src/notificationTask.js).
 export const CATEGORIES = { lembrete: 'lembrete', conta: 'conta', receita: 'receita' };
@@ -178,12 +184,12 @@ export async function scheduleAt(content, date) {
   }
 }
 
-function bodyFor(kind, item, d) {
+export function bodyFor(kind, item, d) {
   const when = d === 0 ? 'Hoje' : d === 1 ? 'Amanhã' : `Em ${d} dias`;
   if (kind === 'finance') {
-    const value = formatMoney(item.amount || 0);
-    if (item.type === 'in') return `${when}: receber ${item.title} · ${value}`;
-    return `${d === 0 ? 'Vence hoje' : d === 1 ? 'Vence amanhã' : `Vence em ${d} dias`}: ${item.title} · ${value}`;
+    const value = hideMoney ? '' : ` · ${formatMoney(item.amount || 0)}`;
+    if (item.type === 'in') return `${when}: receber ${item.title}${value}`;
+    return `${d === 0 ? 'Vence hoje' : d === 1 ? 'Vence amanhã' : `Vence em ${d} dias`}: ${item.title}${value}`;
   }
   const at = d === 0 && item.time ? ` às ${item.time}` : '';
   return `${when}${at}: ${item.title}`;

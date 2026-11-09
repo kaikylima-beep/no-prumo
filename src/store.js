@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { useStoredState } from './storage';
 import { uid, todayISO, ymOf, addMonthsYm, dateInMonth, privacy } from './utils';
 import { learn } from './voice';
-import { scheduleForItem, cancelIds, cancelAll, setReminderStyle } from './reminders';
+import { scheduleForItem, cancelIds, cancelAll, setReminderStyle, setHideMoney } from './reminders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AREAS, AREA_PAL, colors, look } from './theme';
 import { restartApp, SETTINGS_KEY } from './Root';
@@ -171,6 +171,16 @@ export function DataProvider({ children }) {
       }
       setters[kind]((prev) => prev.map((x) => ({ ...x, notifIds: updates[x.id] || [] })));
     }
+  }, []);
+
+  // refaz os avisos de uma área só (ex.: Finanças, ao ligar "Ocultar valores")
+  const rescheduleKind = useCallback(async (kind) => {
+    const updates = {};
+    for (const item of listsRef.current[kind]) {
+      await cancelIds(item.notifIds);
+      updates[item.id] = await scheduleForItem(kind, item, levelsRef.current[kind]);
+    }
+    setters[kind]((prev) => prev.map((x) => (x.id in updates ? { ...x, notifIds: updates[x.id] } : x)));
   }, []);
 
   // ---------- criar, alterar, excluir ----------
@@ -382,7 +392,12 @@ export function DataProvider({ children }) {
       return [];
     });
   }, []);
-  const setHideBalance = useCallback((v) => setSettings((prev) => ({ ...prev, hideBalance: !!v })), []);
+  // 1.12.3: os avisos de Finanças são refeitos para mostrar (ou esconder) o valor
+  const setHideBalance = useCallback(async (v) => {
+    setHideMoney(!!v);
+    setSettings((prev) => ({ ...prev, hideBalance: !!v }));
+    await rescheduleKind('finance');
+  }, []);
   const setTestMode = useCallback((v) => setSettings((prev) => ({ ...prev, testMode: !!v })), []);
   const setVoiceOnDevice = useCallback((v) => setSettings((prev) => ({ ...prev, voiceOnDevice: !!v })), []);
   // dicionário pessoal da voz
@@ -439,6 +454,7 @@ export function DataProvider({ children }) {
 
   // antes de qualquer aviso, usa o estilo salvo
   setReminderStyle(settings.alertStyle);
+  setHideMoney(!!settings.hideBalance);
 
   // atualizações: 1.2 usava um canal sem vibração; até a 1.3 os avisos não tinham
   // botões ("Feito", "Adiar"). Reagenda tudo uma vez para pegar as novidades.

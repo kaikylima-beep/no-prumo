@@ -270,14 +270,17 @@ check('assim que eu acordar tomar remédio', [{ kind: 'task', title: 'Remédio' 
   const at = (h, m = 0) => new Date(2026, 10, 6, h, m);
   const data = {
     tasks: [
-      { id: 'a', title: 'Lavar carro', done: false },
-      { id: 'b', title: 'Pagar IPTU', done: false },
-      { id: 'c', title: 'Trocar lâmpada', done: true },
+      { id: 'a', title: 'Lavar carro', date: '2026-11-06', done: false },
+      { id: 'b', title: 'Pagar IPTU', date: '2026-11-04', done: false }, // atrasada conta
+      { id: 'c', title: 'Trocar lâmpada', date: '2026-11-06', done: true },
+      { id: 'd', title: 'Comprar pilha', done: false }, // sem data não conta
+      { id: 'e', title: 'Ligar para a avó', date: '2026-11-07', done: false }, // amanhã não conta
       { id: 'r', title: 'Remédio', repeat: { freq: 'daily' }, times: ['08:00', '20:00'], date: '2026-11-01', doneSlots: ['2026-11-06 08:00'] },
+      { id: 'r2', title: 'Vitamina', repeat: { freq: 'daily' }, times: ['07:00'], date: '2026-11-01', doneSlots: ['2026-11-06 07:00'] }, // já feita hoje
     ],
     study: [
-      { id: 's1', title: 'Prova', done: false },
-      { id: 's2', title: 'Lista', done: false },
+      { id: 's1', title: 'Prova', date: '2026-11-06', done: false },
+      { id: 's2', title: 'Lista', date: '2026-11-12', done: false },
       { id: 's3', title: 'Seminário', done: false },
     ],
     finance: [
@@ -287,18 +290,22 @@ check('assim que eu acordar tomar remédio', [{ kind: 'task', title: 'Remédio' 
     ],
   };
   const order = ['task', 'finance', 'study'];
-  const m1 = G.entryMessages(data, 'Kaikyn Silva', order, at(15, 4));
-  const m2 = G.entryMessages(data, 'Kaikyn', order, at(21, 0));
+  const m1 = G.entryMessages(data, 'Ana Silva', order, at(15, 4));
+  const m2 = G.entryMessages(data, 'Ana', order, at(21, 0));
+  // 1.12.3: prova daqui a 6 dias e tarefa sem data não fazem o app cobrar
+  const calm = G.entryMessages({ tasks: [{ id: 'x', title: 'Comprar pilha', done: false }], study: [{ id: 'p', title: 'Prova de cálculo', date: '2026-11-12', done: false }], finance: [] }, 'Ana', order, at(9));
   const empty = G.entryMessages({ tasks: [], study: [], finance: [] }, '', order, at(7, 30));
   const cases = [
     ['bom dia', G.salutation(at(7)), 'Bom dia'],
     ['boa tarde', G.salutation(at(12)), 'Boa tarde'],
     ['boa noite', G.salutation(at(18)), 'Boa noite'],
     ['madrugada é boa noite', G.salutation(at(3)), 'Boa noite'],
-    ['saudação com primeiro nome', m1.greeting, 'Boa tarde, Kaikyn.'],
-    ['tarefas pendentes (20h ainda não chegou)', m1.messages[0], 'Kaikyn, você tem 2 tarefas pendentes.'],
-    ['área com menos resoluções', m1.messages[1], 'Kaikyn, você precisa concluir seus lembretes de Estudos.'],
-    ['às 21h o remédio das 20h conta', m2.messages[0], 'Kaikyn, você tem 3 tarefas pendentes.'],
+    ['saudação com primeiro nome', m1.greeting, 'Boa tarde, Ana.'],
+    ['tarefas para hoje: hoje, atrasada e rotina com horário em aberto', m1.messages[0], 'Ana, você tem 3 tarefas para hoje.'],
+    ['área com menos resoluções', m1.messages[1], 'Ana, você precisa concluir seus lembretes de Estudos.'],
+    ['às 21h continua o mesmo número', m2.messages[0], 'Ana, você tem 3 tarefas para hoje.'],
+    ['1.12.3: saudação e destaque de Tarefas contam igual', G.dueToday(data.tasks, at(15, 4)).map((t) => t.id).sort().join(','), 'a,b,r'],
+    ['1.12.3: prova futura e tarefa sem data não cobram', calm.messages.join(' '), 'Ana, tudo em dia por aqui.'],
     ['sem nome e sem pendências', `${empty.greeting} ${empty.messages.join(' ')}`, 'Bom dia. Tudo em dia por aqui.'],
     ['conta futura não conta como pendente', String(m1.stats.finance.pending), '1'],
   ];
@@ -1281,6 +1288,90 @@ export default {
   ok('modo de teste guarda sozinho o que foi corrigido', /settings\.testMode && \(corrected/.test(cm), true);
   const es = readFileSync(join(root, 'src/EditSheet.js'), 'utf8');
   ok('corrigir o nome de um item falado ensina o app', /learnVoice\(diffWords\(item\.title/.test(es), true);
+}
+
+// ---- 1.12.3: avisos depois de restaurar, valores escondidos nos avisos, saudação
+{
+  const ok = (name, got, exp) => {
+    total++;
+    const same = JSON.stringify(got) === JSON.stringify(exp);
+    if (!same) { fails++; console.log(`FALHOU  1.12.3: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.12.3: ${name}`);
+  };
+  const d3 = mkdtempSync(join(tmpdir(), 'v1123-'));
+  writeFileSync(join(d3, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
+  writeFileSync(join(d3, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(
+    join(d3, 'parser.mjs'),
+    readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'")
+  );
+  writeFileSync(join(d3, 'rnStub.mjs'), `export const Platform = { OS: 'test' };`);
+  writeFileSync(
+    join(d3, 'reminders.mjs'),
+    readFileSync(join(root, 'src/reminders.js'), 'utf8')
+      .replace("from 'react-native'", "from './rnStub.mjs'")
+      .replace("from './parser'", "from './parser.mjs'")
+      .replace("from './utils'", "from './utils.mjs'")
+      .replace("from './recurrence'", "from './recurrence.mjs'")
+  );
+  const RM = await import(pathToFileURL(join(d3, 'reminders.mjs')).href);
+  const luz = { id: 'f1', type: 'out', title: 'Conta de luz', amount: 120, status: 'pending', date: '2026-11-12' };
+  RM.setHideMoney(false);
+  ok('aviso de conta mostra o valor', RM.bodyFor('finance', luz, 0), 'Vence hoje: Conta de luz · R$ 120,00');
+  RM.setHideMoney(true);
+  ok('"Ocultar valores" tira o valor do aviso', RM.bodyFor('finance', luz, 1), 'Vence amanhã: Conta de luz');
+  ok('"Ocultar valores" vale para o que vai entrar', RM.bodyFor('finance', { ...luz, type: 'in', title: 'Salário' }, 0), 'Hoje: receber Salário');
+  RM.setHideMoney(false);
+  const st = readFileSync(join(root, 'src/store.js'), 'utf8');
+  ok('ligar "Ocultar valores" refaz os avisos de Finanças', /setHideMoney\(!!v\);[\s\S]{0,120}rescheduleKind\('finance'\)/.test(st), true);
+
+  // restaurar refaz os avisos (módulo de avisos de mentira)
+  writeFileSync(join(d3, 'asyncStub.mjs'), `const m = new Map();
+export default {
+  _m: m,
+  async getItem(k) { return m.has(k) ? m.get(k) : null; },
+  async setItem(k, v) { m.set(k, String(v)); },
+  async removeItem(k) { m.delete(k); },
+  async multiGet(ks) { return ks.map((k) => [k, m.has(k) ? m.get(k) : null]); },
+  async multiSet(ps) { ps.forEach(([k, v]) => m.set(k, String(v))); },
+  async multiRemove(ks) { ks.forEach((k) => m.delete(k)); },
+};`);
+  writeFileSync(
+    join(d3, 'backup.mjs'),
+    readFileSync(join(root, 'src/backup.js'), 'utf8')
+      .replace("from '@react-native-async-storage/async-storage'", "from './asyncStub.mjs'")
+      .replace("from 'react-native'", "from './rnStub.mjs'")
+  );
+  const BK = await import(pathToFileURL(join(d3, 'backup.mjs')).href);
+  const AS = (await import(pathToFileURL(join(d3, 'asyncStub.mjs')).href)).default;
+  const log = { canceled: 0, scheduled: [], style: null, hide: null };
+  let n = 0;
+  const fakeR = {
+    setReminderStyle: (v) => { log.style = v; },
+    setHideMoney: (v) => { log.hide = v; },
+    cancelAll: async () => { log.canceled++; },
+    scheduleForItem: async (kind, item, level) => { log.scheduled.push(`${kind}:${item.id}:${level}`); return [`n${++n}`]; },
+  };
+  const backup = {
+    app: 'no-prumo', format: 1, data: {
+      '@org2/tasks': [{ id: 't1', title: 'Lavar roupa', date: '2026-12-01', done: false, notifIds: ['do-celular-antigo'] }],
+      '@org2/study': [{ id: 's1', title: 'Prova de física', date: '2026-12-03', done: false, notifIds: [] }],
+      '@org2/finance': [{ id: 'f1', type: 'out', title: 'Aluguel', amount: 900, date: '2026-12-05', status: 'pending', notifIds: [] }],
+      '@org2/settings': { alertStyle: 'vibrar', hideBalance: true, levels: { study: 'alta' }, profile: {} },
+    },
+  };
+  AS._m.clear();
+  await AS.setItem('@org2/tasks', JSON.stringify([{ id: 'velha', title: 'Item que não existe mais', notifIds: ['x'] }]));
+  await BK.restoreBackup(BK.parseBackup(JSON.stringify(backup)).backup, fakeR);
+  const t1 = JSON.parse(await AS.getItem('@org2/tasks'))[0];
+  ok('restaurar apaga os avisos antigos do celular', log.canceled, 1);
+  ok('restaurar agenda os avisos de cada item, com a importância do backup', log.scheduled.sort(), ['finance:f1:media', 'study:s1:alta', 'task:t1:media']);
+  ok('o item restaurado guarda os avisos novos (não os do celular antigo)', t1.notifIds, ['n1']);
+  ok('avisos refeitos com o estilo e o "Ocultar valores" do backup', [log.style, log.hide], ['vibrar', true]);
+  await BK.undoRestore(fakeR);
+  const back = JSON.parse(await AS.getItem('@org2/tasks'));
+  ok('voltar ao que havia também refaz os avisos', [back[0].id, log.canceled, back[0].notifIds.length], ['velha', 2, 1]);
+  ok('sem o módulo de avisos, restaurar continua funcionando', await BK.remakeReminders(null), false);
+  rmSync(d3, { recursive: true, force: true });
 }
 
 console.log(`\n${total - fails}/${total} passaram`);

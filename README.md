@@ -2,7 +2,13 @@
 
 App Android pessoal com três áreas (Tarefas, Finanças e Estudos), uma Agenda e um botão de microfone que organiza o que você fala. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.12.2**
+Versão atual: **1.12.3**
+
+## Correções da 1.12.3
+
+- **Restaurar o backup refaz os avisos.** Antes, quem restaurava num celular novo ficava sem nenhum lembrete, e no mesmo celular continuavam tocando avisos de coisas que não existiam mais. "Voltar ao que eu tinha" também refaz.
+- **"Ocultar valores" vale para os avisos.** Com o olho fechado em Finanças, o aviso diz "Vence hoje: Conta de luz", sem o valor, que aparecia na tela de bloqueio.
+- **A saudação bate com a tela.** "Você tem 2 tarefas para hoje" é o mesmo número do destaque de Tarefas (antes contava também as de amanhã e as sem data). O app só cobra uma área quando há algo vencendo hoje ou atrasado: uma prova daqui a 6 dias não gera mais "você precisa concluir seus lembretes de Estudos".
 
 ## Novidades da 1.12.2 · Ajustes mais limpos
 - Ocupação e estado saíram do meio dos Ajustes: ficam em "Ajustar perfil", embaixo da idade.

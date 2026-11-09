@@ -5,6 +5,7 @@ import { useData } from '../store';
 import { useUI } from '../uiContext';
 import { todayISO, shortBR, relativeLabel, diffDays, weekdayName } from '../utils';
 import { pendingSlot, nextSlot, slotsOn } from '../recurrence';
+import { dueToday } from '../greeting';
 import { Screen, Row, Check, Remove, Empty, Pill, Hero, heroText, s } from '../ui';
 import { colors, look } from '../theme';
 import RepeatRow from '../components/RepeatRow';
@@ -93,7 +94,9 @@ export default function TasksScreen() {
   }
 
   // destaque do topo: quantas para hoje e a próxima com horário
-  const todayList = groups.today || [];
+  // 1.12.3: só o que ainda falta hoje (o mesmo número da saudação de entrada)
+  const due = new Set(dueToday(tasks, now).map((t) => t.id));
+  const todayList = (groups.today || []).filter((t) => due.has(t.id));
   const doneToday = done.filter((t) => t.date === today).length;
   const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const nextTimed = todayList.find((t) => !t.repeat && t.time && t.date === today && t.time >= nowHM);

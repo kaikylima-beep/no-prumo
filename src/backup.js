@@ -202,8 +202,48 @@ function writePhoto(backup) {
   }
 }
 
+// 1.12.3: depois de restaurar (ou de voltar ao que havia), os avisos do celular são refeitos
+// a partir dos dados novos. Antes, quem restaurava num celular novo ficava sem nenhum lembrete,
+// e no mesmo celular continuavam tocando avisos de itens que não existiam mais.
+const ITEM_KEYS = { '@org2/tasks': 'task', '@org2/study': 'study', '@org2/finance': 'finance' };
+
+function loadReminders() {
+  try {
+    return require('./reminders');
+  } catch (e) {
+    return null;
+  }
+}
+
+// R = módulo dos avisos (src/reminders.js); os testes passam um de mentira
+export async function remakeReminders(R) {
+  if (!R) return false;
+  try {
+    const settings = JSON.parse((await AsyncStorage.getItem('@org2/settings')) || '{}') || {};
+    R.setReminderStyle(settings.alertStyle);
+    if (R.setHideMoney) R.setHideMoney(!!settings.hideBalance);
+    const levels = { task: 'media', study: 'media', finance: 'media', ...(settings.levels || {}) };
+    await R.cancelAll();
+    for (const [key, kind] of Object.entries(ITEM_KEYS)) {
+      let list = null;
+      try {
+        list = JSON.parse((await AsyncStorage.getItem(key)) || 'null');
+      } catch (e) {
+        list = null;
+      }
+      if (!Array.isArray(list)) continue;
+      const out = [];
+      for (const item of list) out.push({ ...item, notifIds: await R.scheduleForItem(kind, item, levels[kind]) });
+      await AsyncStorage.setItem(key, JSON.stringify(out));
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // grava o backup no lugar do que existe hoje. Antes, guarda uma cópia do estado atual.
-export async function restoreBackup(backup) {
+export async function restoreBackup(backup, R = loadReminders()) {
   const current = await readAll();
   await AsyncStorage.setItem(BEFORE_RESTORE_KEY, JSON.stringify({ at: new Date().toISOString(), raw: current }));
   const plan = restorePlan(backup);
@@ -218,6 +258,7 @@ export async function restoreBackup(backup) {
   });
   await AsyncStorage.multiSet(set);
   if (plan.remove.length) await AsyncStorage.multiRemove(plan.remove);
+  await remakeReminders(R);
 }
 
 export async function hasBeforeRestore() {
@@ -229,7 +270,7 @@ export async function hasBeforeRestore() {
 }
 
 // volta ao que havia antes da última restauração
-export async function undoRestore() {
+export async function undoRestore(R = loadReminders()) {
   const raw = await AsyncStorage.getItem(BEFORE_RESTORE_KEY);
   if (!raw) return false;
   const snap = JSON.parse(raw);
@@ -243,6 +284,7 @@ export async function undoRestore() {
   if (set.length) await AsyncStorage.multiSet(set);
   if (remove.length) await AsyncStorage.multiRemove(remove);
   await AsyncStorage.removeItem(BEFORE_RESTORE_KEY);
+  await remakeReminders(R);
   return true;
 }
 

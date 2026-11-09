@@ -731,7 +731,7 @@ const NOISE =
 const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
 function niceTitle(desc) {
-  // "PIX TRANSF Kaiky N06/11": a data vem grudada no fim do nome
+  // "PIX TRANSF Fulano N06/11": a data vem grudada no fim do nome
   const orig = String(desc || '')
     .replace(/\s+/g, ' ')
     .trim()
