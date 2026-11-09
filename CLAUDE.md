@@ -50,7 +50,7 @@ Use `project_search` antes de ler um doc inteiro.
 3. `README.md`: "Versão atual" e a seção Novidades/Correções.
 4. `npm test` passando.
 5. Commit em `main` e push. Como a versão do `app.json` ainda não tem Release, o GitHub gera o APK sozinho e cria a Release `v1.12.3` com ele. (Não crie tags daqui: o envio de tags é bloqueado nesta sessão.)
-6. Conferir a execução (agente `conferencia`) e avisar o Kaiky que o APK está em **Releases**.
+6. Conferir a execução (agente `conferencia`), baixar o APK da Release e mandar no chat (SendUserFile), com a lista de tarefas do Kaiky.
 7. Atualizar a memória do projeto e o Mapa do No Prumo.
 
 ## Build do APK (GitHub Actions)
@@ -69,17 +69,16 @@ Use o agente certo e peça resposta curta. Não cole logs inteiros na conversa p
 
 | Agente | Quando |
 |---|---|
-| `design` | UI/UX: desenhar tela nova ou mudada antes do código |
 | `codigo` | Mudanças em `src/`, `App.js`, `plugins/` |
 | `voz` | `speech.js`, `parser.js`, frases do campo Testes |
+| `design` | UI/UX: depois do código, ajusta o visual e tira prints |
 | `testes` | Rodar `npm test` e arrumar teste quebrado |
 | `build` | Disparar e acompanhar o build no GitHub |
 | `conferencia` | Conferir o APK gerado e os textos novos no bundle |
-| `visual` | Prints no navegador (versão web) |
 | `documentos` | README, memória do projeto, campo Testes, Mapa |
 | `marketing` | Divulgação (só quando o Kaiky pedir; nada sai antes de fev/2027) |
 
-Linha de produção completa de uma versão: comando `/versao <número e tema>` (`.claude/commands/versao.md`).
+Linha de produção (como uma empresa): `/versao <pedido>` → Desenvolvimento → UI/UX → Testes → APK enviado no chat → lista de tarefas do Kaiky (`.claude/commands/versao.md`).
 
 ## Comandos
 
