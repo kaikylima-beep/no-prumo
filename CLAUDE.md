@@ -14,6 +14,7 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 | Plano da voz | `docs/memoria/voz.md` |
 | Cores, telas, ícone | `docs/memoria/marca.md` |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
+| Peep, a versão alternativa de teste (pasta `peep/`) | `docs/memoria/peep.md` |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
 
 A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude.ai lerem a mesma coisa. Nada de dado pessoal real lá.

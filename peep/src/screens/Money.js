@@ -130,7 +130,7 @@ export default function Money() {
       {m.paid.length ? (
         <Section title="O que já foi" count={m.paid.length}>
           {paid.map((it) => (
-            <ItemRow key={it.id} item={it} compact />
+            <ItemRow key={it.id} item={it} compact plain />
           ))}
           {m.paid.length > paid.length ? <Btn small kind="ghost" label={`Ver os ${m.paid.length}`} onPress={() => setAll(true)} /> : null}
         </Section>

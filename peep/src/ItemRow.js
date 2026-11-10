@@ -8,7 +8,7 @@ import { useNav } from './nav';
 import { isLate, moneyText, repeatText } from './core/model';
 import { dayLabel } from './core/dates';
 
-export default function ItemRow({ item, showDay = true, compact }) {
+export default function ItemRow({ item, showDay = true, compact, plain }) {
   const c = useTheme();
   const { state, toggle, now } = useStore();
   const { open } = useNav();
@@ -33,7 +33,7 @@ export default function ItemRow({ item, showDay = true, compact }) {
         <Check done={item.done} color={color} onPress={() => toggle(item.id)} label={`${item.done ? 'Reabrir' : doneLabel}: ${item.title}`} />
       )}
       <Pressable onPress={() => open('item', { id: item.id })} accessibilityRole="button" accessibilityLabel={`Abrir ${item.title}`} aria-label={`Abrir ${item.title}`} style={{ flex: 1, paddingVertical: 4 }}>
-        <T v="m" c={item.done ? 'faint' : 'text'} numberOfLines={2} style={item.done ? { textDecorationLine: 'line-through' } : null}>
+        <T v="m" c={item.done && !plain ? 'faint' : 'text'} numberOfLines={2} style={item.done && !plain ? { textDecorationLine: 'line-through' } : null}>
           {item.title}
         </T>
         {meta.length ? (
