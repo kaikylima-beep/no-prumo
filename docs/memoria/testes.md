@@ -27,6 +27,7 @@ Instale por cima da 1.13.0 (os dados continuam). Deixe o **modo de teste ligado*
 - [ ] Gastos em sequência: "gastei 30 no almoço 15 no uber e 8 no café" → 3 gastos.
 - [ ] "remédio 3 vezes ao dia" → lembrete que repete, não gasto.
 - [ ] "o [nome] me deve 50 reais" → entrada, a receber.
+- [ ] **Extrato:** importar o extrato novo do Itaú por cima do que já está no app. As compras que já estavam aparecem como "Já está no app" (algumas com "o banco mostra a mesma compra com outra data") e não entram de novo. Deixar "Usar o saldo do extrato" marcado: o saldo de hoje fica igual ao do banco. Se o banco não fechar, a revisão avisa a diferença.
 - [ ] Depois de 3 dias: Ajustes → Modo de teste → "Mandar as frases" (agora vai junto a confiança e o tempo das palavras; é isso que mostra se as pausas funcionam no S25).
 
 ## Testar no celular · 1.13.0

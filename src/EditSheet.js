@@ -368,6 +368,13 @@ function BatchContent({ batch, onClose }) {
                 </Text>
               </Pressable>
             ) : null}
+            {meta.gap && !isCardDoc ? (
+              <Text style={st.accMeta}>
+                O extrato do banco não fecha por {formatMoney(Math.abs(meta.gap.amount))}: o saldo de {fmtD(meta.gap.date)} tem{' '}
+                {meta.gap.amount > 0 ? 'a mais' : 'a menos'} do que a soma dos lançamentos listados (costuma ser rendimento do dia que o banco
+                ainda não mostrou). Com o saldo do extrato marcado, o app fica igual ao banco.
+              </Text>
+            ) : null}
           </View>
         ) : null}
         {isFinance && holderRows.length ? (

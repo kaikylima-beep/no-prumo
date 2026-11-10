@@ -1674,5 +1674,62 @@ export default {
   ok('modo de teste guarda confiança e tempo das palavras', /timing: heard \? heard\.timing/.test(cm) && /tempo das palavras/.test(readFileSync(join(root, 'src/Drawer.js'), 'utf8')), true);
 }
 
+
+// ---------- 1.13.1: mesmo lançamento em dois extratos, com datas diferentes (dados inventados) ----------
+{
+  const ok = (name, got, exp) => {
+    total++;
+    if (JSON.stringify(got) !== JSON.stringify(exp)) {
+      fails++;
+      console.log(`FALHOU  1.13.1 extrato: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`);
+    } else console.log(`ok      1.13.1 extrato: ${name}`);
+  };
+  const head = 'FULANO DE TAL 000.000.000-00 agência: 0000 conta: 00000-0\nextrato conta / lançamentos\ndata lançamentos valor (R$) saldo (R$)\n';
+  // 1º extrato, tirado no sábado 07/11: as compras do sábado aparecem com a data de segunda (09/11)
+  const textA = head + [
+    '09/11/2026 PAY LOJAX 07/11 -40,00',
+    '09/11/2026 PAY LOJAX 07/11 -12,50',
+    '07/11/2026 SALDO DO DIA 147,50',
+    '06/11/2026 PAY CAFE 06/11 -25,00',
+    '06/11/2026 SALDO DO DIA 200,00',
+    '05/11/2026 PAY CAFE 05/11 -25,00',
+    '05/11/2026 SALDO DO DIA 225,00',
+  ].join('\n');
+  // 2º extrato, tirado na terça 10/11: as mesmas compras ficam em 09/11, e há um café novo em 09/11
+  const textB = head + [
+    '10/11/2026 SALDO DO DIA 122,50',
+    '09/11/2026 PAY LOJAX 07/11 -40,00',
+    '09/11/2026 PAY LOJAX 07/11 -12,50',
+    '09/11/2026 PAY CAFE 09/11 -25,00',
+    '09/11/2026 SALDO DO DIA 122,50',
+    '06/11/2026 PAY CAFE 06/11 -25,00',
+    '06/11/2026 SALDO DO DIA 200,00',
+  ].join('\n');
+  const A = DP.parseStatementText(textA, '2026-11-07');
+  ok('1º extrato põe as compras do sábado no dia da compra', A.items.filter((i) => /Lojax/i.test(i.title)).map((i) => i.date), ['2026-11-07', '2026-11-07']);
+  // o que ficou salvo no app depois do 1º extrato
+  const saved = A.items.map((i, k) => ({ id: `a${k}`, type: i.type, amount: i.amount, date: i.date, account: 'itau', status: 'paid', title: i.title }));
+  const B = DP.parseStatementText(textB, '2026-11-10');
+  ok('2º extrato traz a outra data guardada', B.items.filter((i) => /Lojax/i.test(i.title)).map((i) => [i.date, i.sameAs]), [['2026-11-09', ['2026-11-07']], ['2026-11-09', ['2026-11-07']]]);
+  const rec = AC.reconcile(B.items, saved, 'itau', [{ id: 'itau', name: 'Itaú', kind: 'corrente' }]);
+  ok('as compras do sábado não entram de novo', rec.filter((r) => /Lojax/i.test(r.title)).map((r) => [r.action, r.targetId]), [['dup', 'a0'], ['dup', 'a1']]);
+  ok('o café novo de 09/11 entra (não confunde com o de 05/11 nem com o de 06/11)', rec.filter((r) => /Cafe|Café|débito/i.test(r.title)).map((r) => [r.date, r.action]), [['2026-11-09', 'add'], ['2026-11-06', 'dup']]);
+  ok('a revisão diz por que é repetido', /outra data/.test(rec.find((r) => /Lojax/i.test(r.title)).hint), true);
+  ok('a outra data não é salva no lançamento', rec.every((r) => !('sameAs' in r)) && !('sameAs' in AC.toFinanceData(rec[0], 'itau', 'imp1')), true);
+  // pelo arquivo inteiro (marca de "já está no app" na revisão)
+  const enc = new TextEncoder();
+  const doc = DP.parseDocument({ name: 'b.csv', bytes: enc.encode(textB) }, '2026-11-10', saved);
+  ok('a revisão marca as duas compras do sábado como já importadas', doc.items.filter((i) => /Lojax/i.test(i.title)).map((i) => i.duplicate), [true, true]);
+  ok('e deixa o café novo marcado para importar', doc.items.filter((i) => i.date === '2026-11-09' && !/Lojax/i.test(i.title)).map((i) => i.duplicate), [false]);
+  ok('extrato que fecha: sem diferença', [A.meta.gap || null, B.meta.gap || null], [null, null]);
+  const C = DP.parseStatementText(textB.replace('10/11/2026 SALDO DO DIA 122,50', '10/11/2026 SALDO DO DIA 122,51'), '2026-11-10');
+  ok('extrato que não fecha por 1 centavo: o app avisa, sem inventar lançamento', [C.meta.gap, C.items.length === B.items.length, C.meta.balance], [{ amount: 0.01, date: '2026-11-10' }, true, 122.51]);
+  const es = readFileSync(join(root, 'src/EditSheet.js'), 'utf8');
+  ok('a revisão mostra a diferença do banco', /O extrato do banco não fecha/.test(es), true);
+  // reimportar o mesmo extrato continua dando tudo repetido
+  const savedB = B.items.map((i, k) => ({ id: `b${k}`, type: i.type, amount: i.amount, date: i.date, account: 'itau', status: 'paid', title: i.title }));
+  ok('reimportar o mesmo extrato: tudo já está no app', AC.reconcile(B.items, savedB, 'itau', []).every((r) => r.action === 'dup'), true);
+}
+
 console.log(`\n${total - fails}/${total} passaram`);
 process.exitCode = fails ? 1 : 0;

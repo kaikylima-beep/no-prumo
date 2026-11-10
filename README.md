@@ -21,6 +21,11 @@ O app passou a entender a fala do jeito que ela sai, não só a frase arrumadinh
 - **Medição:** banco de 278 frases de fala natural no `npm test`. A versão anterior acertava 46%; esta acerta 99% (84% em frases que o código nunca tinha visto).
 - **Modo de teste:** "Mandar as frases" leva também a confiança do Android e o tempo de cada palavra.
 
+## Correções da 1.13.1 · Importar extrato
+
+- **Compras repetidas ao importar um extrato novo.** O banco mostra a mesma compra com datas diferentes em extratos diferentes (o dia da compra num, o dia em que lançou no outro). O app só reconhecia o que tinha a mesma data, e as compras entravam de novo. Agora ele confere as duas datas e marca como "Já está no app". Duas compras iguais em dias diferentes continuam sendo duas.
+- **O extrato do banco que não fecha.** Às vezes o saldo que o banco informa tem centavos que não aparecem em nenhum lançamento (costuma ser o rendimento do dia). A revisão da importação agora avisa, e com "Usar o saldo do extrato" marcado o saldo do app fica igual ao do banco. O app não inventa lançamento para cobrir a diferença.
+
 ## Novidades da 1.13.0 · Notas e faltas
 
 - **Notas e faltas em cada matéria.** Toque numa matéria (Estudos → Matérias) para ver as faltas e as notas dela. O cartão da matéria já mostra "Faltas 3 de 14 · Média 7,2".
