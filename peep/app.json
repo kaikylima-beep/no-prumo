@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Peep",
+    "slug": "peep",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.peep.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#FFC83D",
+        "foregroundImage": "./assets/adaptive-fg.png",
+        "monochromeImage": "./assets/adaptive-mono.png"
+      },
+      "permissions": ["RECORD_AUDIO", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM"],
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": { "favicon": "./assets/favicon.png" },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permitir que o Peep use o microfone para ouvir o que você fala.",
+          "speechRecognitionPermission": "Permitir que o Peep reconheça sua fala.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts",
+            "com.google.android.as"
+          ]
+        }
+      ]
+    ],
+    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#FFC83D" }
+  }
+}
