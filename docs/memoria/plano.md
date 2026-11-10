@@ -55,6 +55,15 @@ Sem data, quando couber entre versões (correção x.y.Z): simplificar a primeir
 - Voz: responder perguntas (ver Decisões).
 - Mais para frente → 2.0: iPhone; IA no celular para entender frases; IA lê calendário e ementa; compartilhar do WhatsApp; bot no WhatsApp (2.0).
 
+## Finanças: candidatos a correção (vistos no backup real de 08/11; sem valores nem nomes)
+Entram como correção x.y.Z, sem tirar função. O Kaiky decide os que mudam regra.
+1. **Devolução de Pix** ("DEV PIX") entra como saída e o Pix original como entrada: os dois inflam "Entrou" e "Saiu". O par deveria se anular (ou virar um só, marcado como devolvido).
+2. **Rendimento da aplicação automática** ("REND PAGO APLIC AUT") entra como extra em "Outros"; deveria ser categoria Investimentos (e não contar como extra no limite).
+3. **Títulos da importação:** data grudada sem barra fica no título ("…0610", "…0711"); prefixos do banco ("RSCSS", "PAY") ficam; nome do recebedor cortado pelo extrato ("… do Bra", "… La"). Limpar o que é regra geral (data grudada, prefixo do banco).
+4. **Compras no débito** caem quase todas em "Outros"; dá para reaproveitar as categorias da voz (mercado, transporte, farmácia…) pelo nome do estabelecimento.
+5. **Juros do limite e IOF** viram "Contas, necessário". Sugestão: categoria "Tarifas e juros", não necessária (é custo evitável e merece destaque).
+6. **Fatura do cartão** vem "não necessária" por padrão, embora junte gastos necessários. Avaliar deixar sem marcação (fora do necessário × não necessário) quando as compras do cartão não estão no app.
+
 ## Achados da análise de 09/11 (para não perder)
 - 26 dos testes só procuram texto no código (não testam o comportamento). Trocar aos poucos por testes de verdade.
 - Os dados ficam em listas inteiras regravadas a cada mudança; para anos de extrato importado, pensar em banco de dados no celular (expo-sqlite). Não é urgente.
