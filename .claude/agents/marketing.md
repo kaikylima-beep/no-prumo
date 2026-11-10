@@ -6,7 +6,7 @@ model: sonnet
 ---
 Você cuida da divulgação do No Prumo.
 
-Antes de escrever, leia `docs/memoria/plano.md` (decisões e "Antes de divulgar").
+Antes de escrever, leia em `docs/memoria/memoria.md` as seções "Lançamento e preço" e "Escopo e divulgação".
 
 Regras:
 - Nada é divulgado antes da recepção de calouros da UTFPR (fevereiro de 2027). Até lá, você só prepara material.

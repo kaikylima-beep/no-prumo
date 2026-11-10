@@ -1,7 +1,17 @@
-# Campo Testes
+# No Prumo: campo Testes (frases para corrigir)
 
-Frases que o app entendeu errado no celular. Toda versão transforma as abertas em casos do `npm test` (com nomes trocados).
-Regra: erro de ouvido = dicionário pessoal/vocabulário; erro de regra = regra geral de português, testada em várias frases.
+Criado em 09/11/2026, a pedido do Kaiky: enquanto o app está em fase de testes, toda versão nova tem, além do que já estava planejado, um **campo Testes**. Ele lista as frases que o app entendeu errado no celular e o que fazer com cada uma. Para quem vende o app, um título como "Chegando casa eu tenho" pesa muito, mesmo que a tarefa tenha sido salva.
+
+## Como funciona
+
+1. **No celular:** o modo de teste fica ligado (5 toques em "No Prumo 1.12.x", no fim dos Ajustes). Toda frase corrigida antes de salvar fica guardada sozinha. Print da tela Editar também serve.
+2. **Enviar:** Ajustes → Modo de teste → "Mandar as frases", colando no chat. Pode ser junto com os prints.
+3. **Triagem (Claude):** cada frase entra na tabela abaixo com um tipo:
+   - **Ouvido:** o celular trocou a palavra ("pique" no lugar de "Pix"). Quem resolve é o dicionário pessoal e o vocabulário, nunca uma regra para aquela palavra.
+   - **Regra:** a palavra veio certa e o app montou o item errado. Quem resolve é uma regra **geral** de português, testada em várias frases parecidas.
+   - **Tela:** o app entendeu, mas mostrou de um jeito confuso.
+4. **Na próxima versão:** cada frase do tipo Regra vira teste automático no `npm test` (com nomes trocados), e a regra geral é corrigida.
+5. **Fechamento:** a frase sai da lista de abertas quando passa no celular.
 
 ## Testar no celular · 1.12.3
 Instale por cima (os dados continuam). Marque o que funcionou; o que não funcionar, mande a frase ou o print.
@@ -30,11 +40,23 @@ Instale por cima (os dados continuam). Marque o que funcionou; o que não funcio
 **Uso normal**
 - [ ] Usar 3 dias com o modo de teste ligado e mandar as frases guardadas.
 
-## Abertas
-- (nenhuma: mandar as frases do modo de teste depois de usar a 1.12.3)
+## Frases abertas
 
-## Resolvidas
-- **1.12.3** · "Chegando em casa eu tenho que lavar o carro" virava "Chegando casa eu tenho": contexto no gerúndio no começo (chegando, saindo, voltando, indo…) sai do título e não decide a área.
-- **1.12.3** · Título curto começa no verbo de ação ("Lavar carro"), quando antes dele só há contexto.
-- **1.12.3** · "Fazer o pics do [nome] de 60" saía pago: dinheiro com verbo no infinitivo no começo (fazer, mandar, enviar, transferir, depositar, pagar) é a pagar; "fiz", "mandei", "enviei" são passado (pago).
-- **Ação do Kaiky (não é código)** · "Pics" no lugar de "Pix": corrigir 2 vezes na confirmação para o dicionário pessoal aprender.
+| # | Data | O que o celular entregou | O que o app fez | Tipo | Correção geral planejada |
+|---|---|---|---|---|---|
+| — | — | Nenhuma. Mandar as frases do modo de teste depois de usar a 1.12.3. | | | |
+
+## Frases resolvidas (nomes de pessoas trocados)
+
+| # | Data | Frase | Problema | Resolvida em |
+|---|---|---|---|---|
+| 1 | 09/11 | "quando eu chegar em casa hoje eu preciso lavar o carro umas 10 horas da noite fazer o pique do Bruno de R$ 60 isso dá para prova de química" | Virou 1 item só. Texto sem pontuação (Regra) + "pique"/"isso dá" (Ouvido: Pix/estudar) | 1.12.1: separação por verbos e pontuação do reconhecedor. As palavras mal ouvidas ficam com o dicionário pessoal. |
+| 2 | 09/11 | "comer salada 3 horas da tarde" | Sem horário, sem data, hora no título | 1.12.1: "N horas da tarde" é horário; só horário = hoje. |
+| 3 | 09/11 | "fazer o pics do Rafa de R$ 60" | Finanças "Pics Rafa", R$ 60, **pago** (Ouvido + Regra) | 1.12.3 (teste no celular pendente): dinheiro com verbo no infinitivo no começo (fazer, mandar, enviar, transferir, depositar, pagar) é a pagar; "fiz/mandei/enviei" é pago. Ouvido: "pics" → "pix" pelo dicionário pessoal (corrigir 2 vezes). |
+| 4 | 09/11 | "Chegando em casa eu tenho que lavar o carro lá para as 10 horas" | Tarefa "Chegando casa eu tenho" (Regra) | 1.12.3 (teste no celular pendente): contexto no gerúndio no começo sai do título e não decide a área; título curto começa no verbo de ação ("Lavar carro"). |
+
+## Regras para a correção
+
+- Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3).
+- Nomes de pessoas são trocados antes de entrar no `npm test` e neste arquivo.
+- Se uma frase depende de a palavra vir certa e ela vem errada (tipo Ouvido), o caminho é o dicionário pessoal ou a tela de correção, não o interpretador.

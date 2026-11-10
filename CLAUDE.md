@@ -8,9 +8,10 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 
 | Precisa de… | Onde |
 |---|---|
-| Decisões, regras de negócio, ordem das versões | `docs/memoria/plano.md` |
+| Decisões, regras de negócio, estado do app | `docs/memoria/memoria.md` (fonte da verdade) |
+| Calendário das próximas versões | `docs/memoria/plano.md` |
 | Frases que o app entendeu errado (campo Testes) | `docs/memoria/testes.md` |
-| Plano da voz | `docs/memoria/voz.md` (enquanto não existir: doc `claude/prumo-analise-voz.md` no Projeto do claude.ai) |
+| Plano da voz | `docs/memoria/voz.md` |
 | Cores, telas, ícone | `docs/memoria/marca.md` (enquanto não existir: doc `claude/prumo-marca-e-visual.md` no Projeto do claude.ai) |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
