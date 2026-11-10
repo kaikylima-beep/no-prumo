@@ -12,7 +12,7 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 | Calendário das próximas versões | `docs/memoria/plano.md` |
 | Frases que o app entendeu errado (campo Testes) | `docs/memoria/testes.md` |
 | Plano da voz | `docs/memoria/voz.md` |
-| Cores, telas, ícone | `docs/memoria/marca.md` (enquanto não existir: doc `claude/prumo-marca-e-visual.md` no Projeto do claude.ai) |
+| Cores, telas, ícone | `docs/memoria/marca.md` |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
 

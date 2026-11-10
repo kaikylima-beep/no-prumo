@@ -8,7 +8,7 @@ A memória do No Prumo fica aqui, no repositório, para qualquer agente (Claude 
 | `plano.md` | Calendário das versões até fev/2027 e resumo das decisões de 09/11 |
 | `testes.md` | Campo Testes: lista para testar no celular e frases que o app entendeu errado |
 | `voz.md` | Análise da captação de voz (09/11) e o que a 1.12.1 entregou |
-| `marca.md` | Cores, telas e ícone (falta trazer `claude/prumo-marca-e-visual.md` do Projeto do claude.ai) |
+| `marca.md` | Nome, ícone Blocão, botão de falar, dois modos, cores e telas desenhadas |
 
 Regras:
 - **Nada de dado pessoal real** (extrato, holerite, saldo, CPF, número de conta, nomes de terceiros). Exemplos sempre inventados.
