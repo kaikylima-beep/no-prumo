@@ -12,6 +12,7 @@ const BASE_VOCAB = [
   'aula', 'faculdade', 'estágio', 'boleto', 'fatura', 'salário', 'reais', 'me lembrar', 'todo dia',
   'amanhã', 'depois de amanhã', 'da tarde', 'da noite', 'da manhã', 'mercado', 'aluguel', 'conta de luz',
   'Uber', 'iFood', 'paguei', 'gastei', 'recebi', 'transferi',
+  'faltei', 'tirei', 'nota', 'P1', 'P2', // 1.13: notas e faltas
 ];
 
 const STOP = new Set(

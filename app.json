@@ -2,7 +2,7 @@
   "expo": {
     "name": "Prumo",
     "slug": "meu-organizador",
-    "version": "1.12.3",
+    "version": "1.13.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "ios": {
@@ -22,7 +22,7 @@
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM"
       ],
-      "versionCode": 22,
+      "versionCode": 23,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

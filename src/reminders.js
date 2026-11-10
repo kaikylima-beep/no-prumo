@@ -38,7 +38,7 @@ export function setHideMoney(v) {
 
 // Botões que aparecem no próprio aviso. Funcionam com o app fechado
 // (tratados em src/actions.js e src/notificationTask.js).
-export const CATEGORIES = { lembrete: 'lembrete', conta: 'conta', receita: 'receita' };
+export const CATEGORIES = { lembrete: 'lembrete', conta: 'conta', receita: 'receita', aula: 'aula' };
 
 async function setupCategories() {
   const bg = { opensAppToForeground: false };
@@ -49,6 +49,11 @@ async function setupCategories() {
   await Notifications.setNotificationCategoryAsync(CATEGORIES.conta, [
     { identifier: 'pago', buttonTitle: 'Paguei', options: bg },
     { identifier: 'amanha', buttonTitle: 'Lembrar amanhã', options: bg },
+  ]);
+  // 1.13: "Foi na aula?"
+  await Notifications.setNotificationCategoryAsync(CATEGORIES.aula, [
+    { identifier: 'fui', buttonTitle: 'Fui', options: bg },
+    { identifier: 'faltei', buttonTitle: 'Faltei', options: bg },
   ]);
   await Notifications.setNotificationCategoryAsync(CATEGORIES.receita, [
     { identifier: 'pago', buttonTitle: 'Recebi', options: bg },

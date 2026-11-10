@@ -25,8 +25,8 @@ Ritmo: uma versão por semana, com 3 dias de uso no celular antes da próxima. A
 
 | Semana | Versão | Tema |
 |---|---|---|
-| 09/11 – 15/11 | **1.12.3** | Correções + campo Testes · **em teste no celular** |
-| 16/11 – 22/11 | **1.13** | Notas e faltas |
+| 09/11 – 15/11 | **1.12.3** | Correções + campo Testes · na `main` (Release v1.12.3) |
+| 10/11 – 22/11 | **1.13.0** | Notas e faltas + Finanças mais limpo (a 1.12.4 entrou junto) · **em teste no celular** |
 | 23/11 – 29/11 | **1.14** | Meus horários fixos (+ troca da chave de assinatura) |
 | 30/11 – 13/12 | **1.15** | Seu dia (tela Hoje) · 2 semanas, é a maior |
 | 14/12 – 20/12 | **1.16** | Revisões automáticas |
@@ -37,7 +37,7 @@ Ritmo: uma versão por semana, com 3 dias de uso no celular antes da próxima. A
 
 ## Próximas entregas: escopo fechado em 10/11
 
-### 1.12.4 · Finanças mais limpo (correção, semana de 10/11)
+### 1.12.4 · Finanças mais limpo → entrou na 1.13.0 (10/11, para ganhar tempo). Todos os itens aprovados e feitos.
 Erros claros (entram):
 1. Devolução de Pix ("DEV PIX") anula o Pix que voltou: não infla "Entrou" nem "Saiu".
 2. Títulos da importação: tirar data grudada ("…0711"), códigos do banco ("RSCSS", "PAY") e número solto ("Pix enviado 5725…").
@@ -49,7 +49,7 @@ Mudam regra (só com o "sim" do Kaiky):
 7. Juros do limite e IOF viram "Tarifas e juros", não necessários.
 8. Fatura do cartão sem marca de necessário/não necessário.
 
-### 1.13 · Notas e faltas (semana de 16/11)
+### 1.13.0 · Notas e faltas: feita em 10/11 (em teste). Decisões do Kaiky: média para passar configurável (cada faculdade); duração da aula no perfil (UTFPR 50 min); aula de 100 min = 2 faltas.
 Notas:
 - Em cada matéria, a lista de avaliações: nome (P1, P2, trabalho, lista…), data, nota tirada e nota máxima (padrão 10).
 - Campo livre "Como o professor calcula", para copiar a fórmula do caderno. O app não impõe fórmula.
@@ -66,7 +66,7 @@ Nos dois visuais: Simples com lista calma ("Faltas 3 de 16 · Média 7,2"); Avan
 Também: backup leva notas e faltas; campo Testes; testes automáticos de média, limite e voz.
 
 ## Fila (detalhe de cada versão)
-1. **1.12.3** · em teste no celular.
+1. **1.13.0** · em teste no celular.
 2. **1.13 · Notas e faltas** (decidido em 09/11):
    - **Notas:** por matéria, o aluno anota cada avaliação (P1, trabalho, lista…) com a nota que tirou e, se quiser, o peso ou a fórmula do professor (cada professor calcula de um jeito; o app não impõe). Mostra a média só quando a pessoa deu os pesos. Pela voz: "tirei 7,5 na P1 de cálculo".
    - **Faltas:** por matéria, usando os horários que a matéria já tem (1.12). Depois da aula, aviso opcional "Foi na aula de Cálculo 2?" com Fui / Faltei. Limite de faltas (padrão 25% das aulas, editável) e aviso perto do limite. Pela voz: "faltei na aula de física".

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, Modal, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Text } from '../AppText';
 import { colors, subjectColor } from '../theme';
 import { useData } from '../store';
 import { useUI } from '../uiContext';
 import { todayISO, shortBR, weekdayName, diffDays, fromISO } from '../utils';
-import { Screen, Row, Check, Remove, Empty, Segmented, s } from '../ui';
+import { Screen, Row, Check, Remove, Empty, Segmented, Notice, s } from '../ui';
+import { gradesToAsk } from '../academic';
+import SubjectDetail from '../components/SubjectDetail';
 import { sortByWhen, DoneSection } from './TasksScreen';
 import RepeatRow from '../components/RepeatRow';
 import SwipeRow from '../components/SwipeRow';
@@ -24,7 +27,8 @@ function progressTo(item, now) {
 }
 
 export default function StudyScreen() {
-  const { study, subjects, toggleDone, palettes, tone, settings, simple } = useData();
+  const { study, subjects, toggleDone, palettes, tone, settings, simple, markGradeAsked } = useData();
+  const [gradeFor, setGradeFor] = useState(null); // 1.13: { subjectId, grade } aberto pelo "Já saiu a nota?"
   const { openEditor, removeWithUndo, showToast } = useUI();
   const pal = palettes.study;
   const [tab, setTab] = useState('itens');
@@ -145,6 +149,23 @@ export default function StudyScreen() {
                 : `Próxima: ${next.title}, em ${diffDays(today, next.date)} ${diffDays(today, next.date) === 1 ? 'dia' : 'dias'}.`}
             </Text>
           ) : null}
+          {/* 1.13: prova ou trabalho de uma matéria que já passou e ainda não tem nota */}
+          {gradesToAsk(study, subjects, today).slice(0, 2).map((t) => (
+            <View key={`nota-${t.id}`} style={{ marginTop: 12 }}>
+              <Notice
+                title={`Já saiu a nota de ${t.title}?`}
+                sub={`${shortBR(t.date)}${subjectOf(t) ? ` · ${subjectOf(t).name}` : ''}`}
+                action="Lançar nota"
+                onAction={() => {
+                  // a nota salva com o studyId já faz a pergunta sumir; cancelar mantém a pergunta
+                  setGradeFor({ subjectId: t.subjectId, grade: { name: t.title.replace(/\s+(?:de|da|do)\s+.+$/i, '') || t.title, scoreText: '', maxText: '', weightText: '', studyId: t.id } });
+                }}
+              />
+              <Pressable onPress={() => markGradeAsked(t.id)} hitSlop={8} style={{ alignSelf: 'flex-start', marginTop: 6 }} accessibilityRole="button">
+                <Text style={st.later}>Ainda não saiu · não perguntar de novo</Text>
+              </Pressable>
+            </View>
+          ))}
           {overdue.length ? (
             <View>
               <Text style={[s.section, st.sec]}>Já passou</Text>
@@ -172,11 +193,17 @@ export default function StudyScreen() {
           <DoneSection kind="study" label="Concluídos" items={done} renderRow={plainRow} />
         </View>
       )}
+      <Modal visible={!!gradeFor} animationType="slide" onRequestClose={() => setGradeFor(null)} statusBarTranslucent>
+        <SafeAreaProvider>
+          {gradeFor ? <SubjectDetail subjectId={gradeFor.subjectId} focus={{ grade: gradeFor.grade }} onClose={() => setGradeFor(null)} onEdit={() => setGradeFor(null)} /> : null}
+        </SafeAreaProvider>
+      </Modal>
     </Screen>
   );
 }
 
 const st = StyleSheet.create({
+  later: { fontSize: 13, color: colors.mute, textDecorationLine: 'underline' },
   lead: { fontSize: 15, color: colors.ink, marginTop: 4, marginBottom: 4, lineHeight: 21 },
   sec: { marginTop: 22, marginBottom: 8 },
   card: {

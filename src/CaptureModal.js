@@ -6,8 +6,9 @@ import { colors, look, AREA_LABEL, subjectColor } from './theme';
 import { useData } from './store';
 import { useUI } from './uiContext';
 import { useSpeech } from './speech';
-import { parseInput, parseSegment, addDays } from './parser';
-import { todayISO, formatBR } from './utils';
+import { parseInput, parseSegment, addDays, splitSegments } from './parser';
+import { parseAcademic, isAcademicStart, parseGrade, fmtGrade } from './academic';
+import { todayISO, formatBR, shortBR } from './utils';
 import { enrichParsed, findSubject, occupationName, placeQuestion } from './subjects';
 import { toEditable, readEditable, summarize } from './itemForm';
 import ItemFields from './components/ItemFields';
@@ -43,6 +44,33 @@ function keepAudio(uri) {
   }
 }
 
+// 1.13: nota ou falta dita pela voz, pronta para conferir
+let acadCounter = 0;
+const ACAD = new Set(['grade', 'absence']);
+function acadEditable(p) {
+  acadCounter += 1;
+  return {
+    key: `acad${Date.now()}${acadCounter}`,
+    kind: p.kind,
+    raw: p.raw,
+    subjectId: p.subjectId || null,
+    title: p.title,
+    origTitle: p.title,
+    scoreText: p.kind === 'grade' ? fmtGrade(p.score) : '',
+    maxText: p.max ? fmtGrade(p.max) : '',
+    date: p.date,
+    countText: p.kind === 'absence' ? String(p.count || 1) : '',
+  };
+}
+function acadSummary(it, subjects) {
+  // a matéria aparece logo embaixo, com a cor dela; aqui só quando falta escolher
+  const s = subjects.find((x) => x.id === it.subjectId);
+  const where = s ? '' : ' · escolha a matéria';
+  if (it.kind === 'grade') return `Nota ${it.scoreText || '—'}${it.maxText ? ` de ${it.maxText}` : ''}${where}`;
+  const n = Number(it.countText) || 1;
+  return `${n} ${n === 1 ? 'aula' : 'aulas'} · ${shortBR(it.date)}${where}`;
+}
+
 const KINDS = [
   { key: 'task', label: 'Tarefa' },
   { key: 'finance', label: 'Finança' },
@@ -61,7 +89,7 @@ function Content({ onClose, accent = colors.ink }) {
   const insets = useSafeAreaInsets();
   const {
     addItem, addMisheard, updateMisheard, palettes, settings, markCapture, finance, accounts, subjects, tasks, study,
-    learnVoice, forgetVoicePair,
+    learnVoice, forgetVoicePair, addGrade, addAbsence,
   } = useData();
   const { showToast } = useUI();
   const [text, setText] = useState('');
@@ -83,16 +111,30 @@ function Content({ onClose, accent = colors.ink }) {
   }
 
   const analyze = (t) => {
-    const parsed = parseInput(t, todayISO(), new Date(), { short: settings.shortTitles });
-    if (parsed.length === 0) {
+    // 1.13: "tirei 7,5 na P1 de cálculo" e "faltei na aula de física" saem antes do interpretador geral
+    let rest = t;
+    const acad = [];
+    const segs = splitSegments(t);
+    if (segs.some(isAcademicStart)) {
+      const others = [];
+      for (const sg of segs) {
+        const r = isAcademicStart(sg) ? parseAcademic(sg, subjects, todayISO(), settings.academic) : [];
+        if (r.length) acad.push(...r);
+        else others.push(sg);
+      }
+      rest = others.join(', ');
+    }
+    const parsed = rest.trim() ? parseInput(rest, todayISO(), new Date(), { short: settings.shortTitles }) : [];
+    if (parsed.length === 0 && acad.length === 0) {
       setNotUnderstood(true);
       setItems(null);
       return;
     }
     setNotUnderstood(false);
-    setItems(enrichParsed(parsed, subjects, settings.profile).map((p) => toEditable(p.kind, p)));
+    setItems([...acad.map(acadEditable), ...enrichParsed(parsed, subjects, settings.profile).map((p) => toEditable(p.kind, p))]);
     setOpen(null);
   };
+  const describe = (i) => (ACAD.has(i.kind) ? acadSummary(i, subjects) : summarize(i));
 
   // terminou de ouvir: aplica o dicionário pessoal em cada versão e fica com a que o app entende melhor
   const onHeard = (alts, audio) => {
@@ -174,7 +216,7 @@ function Content({ onClose, accent = colors.ink }) {
 
   const patch = (key, changes) => setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...changes } : it)));
 
-  const subjectOf = (it) => (it.kind === 'study' && it.subjectId ? subjects.find((x) => x.id === it.subjectId) : null);
+  const subjectOf = (it) => ((it.kind === 'study' || ACAD.has(it.kind)) && it.subjectId ? subjects.find((x) => x.id === it.subjectId) : null);
 
   const removeItem = (key) => {
     setCorrected(true);
@@ -194,7 +236,7 @@ function Content({ onClose, accent = colors.ink }) {
   // aviso na própria tela: o Toast fica atrás deste Modal
   const saveMisheard = () => {
     if (savedPhrase) return;
-    const id = addMisheard(text, items ? items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${summarize(i)})`) : [], {
+    const id = addMisheard(text, items ? items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${describe(i)})`) : [], {
       heard: heard ? heard.original : null,
       alts: heard ? heard.alts : [],
       audio: heard ? keepAudio(heard.audio) : null,
@@ -207,6 +249,33 @@ function Content({ onClose, accent = colors.ink }) {
   const save = async () => {
     const ready = [];
     for (const it of items) {
+      if (ACAD.has(it.kind)) {
+        // 1.13: nota ou falta
+        if (!it.subjectId) {
+          setOpen(it.key);
+          Alert.alert('Confira os campos', `Escolha a matéria ${it.kind === 'grade' ? 'da nota' : 'da falta'}.`);
+          return;
+        }
+        if (it.kind === 'grade') {
+          const score = parseGrade(it.scoreText);
+          const max = it.maxText ? parseGrade(it.maxText) : null;
+          if (score === null || (it.maxText && !max)) {
+            setOpen(it.key);
+            Alert.alert('Confira os campos', 'Nota inválida. Ex.: 7,5');
+            return;
+          }
+          ready.push({ kind: 'grade', subjectId: it.subjectId, data: { name: (it.title || 'Avaliação').trim(), score, max, date: it.date } });
+        } else {
+          const count = Number(it.countText);
+          if (!Number.isInteger(count) || count < 1) {
+            setOpen(it.key);
+            Alert.alert('Confira os campos', 'Número de aulas inválido.');
+            return;
+          }
+          ready.push({ kind: 'absence', subjectId: it.subjectId, data: { date: it.date, count } });
+        }
+        continue;
+      }
       const r = readEditable(it);
       if (r.error) {
         setOpen(it.key);
@@ -215,12 +284,19 @@ function Content({ onClose, accent = colors.ink }) {
       }
       ready.push({ kind: it.kind, data: r.data });
     }
-    for (const r of ready) await addItem(r.kind, r.data);
+    const notes = [];
+    for (const r of ready) {
+      if (r.kind === 'grade') addGrade(r.subjectId, r.data);
+      else if (r.kind === 'absence') {
+        const res = addAbsence(r.subjectId, r.data);
+        if (res.note) notes.push(res.note);
+      } else await addItem(r.kind, r.data);
+    }
     markCapture();
     // títulos corrigidos à mão também ensinam o app ("Pique do João" -> "Pix do João")
-    const titlePairs = items.flatMap((it) => (it.origTitle && it.title && it.origTitle !== it.title ? diffWords(it.origTitle, it.title) : []));
+    const titlePairs = items.flatMap((it) => (!ACAD.has(it.kind) && it.origTitle && it.title && it.origTitle !== it.title ? diffWords(it.origTitle, it.title) : []));
     if (titlePairs.length) learnVoice(titlePairs);
-    const fixedList = items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${summarize(i)})`);
+    const fixedList = items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${describe(i)})`);
     if (savedPhrase) updateMisheard(savedPhrase, { fixed: fixedList });
     else if (settings.testMode && (corrected || titlePairs.length)) {
       // modo de teste: frase que a pessoa precisou corrigir fica guardada sozinha
@@ -239,7 +315,8 @@ function Content({ onClose, accent = colors.ink }) {
       ? spendingAlert(monthBudget([...finance, ...newOuts], settings.budget, ym, new Date(), capAfter(newOuts, ym), fromOtherAccounts(finance, accounts || [], ym)), settings.levels.finance)
       : null;
     const saved = ready.length === 1 ? '1 item salvo' : `${ready.length} itens salvos`;
-    if (alert) showToast(`${saved}. ${alert}`, 'OK', () => {});
+    if (notes.length) showToast(`${saved}. ${notes.join('. ')}.`, 'OK', () => {});
+    else if (alert) showToast(`${saved}. ${alert}`, 'OK', () => {});
     else showToast(saved);
   };
 
@@ -367,8 +444,9 @@ function Content({ onClose, accent = colors.ink }) {
               {items.length === 1 ? 'Entendi 1 coisa. Está certo?' : `Entendi ${items.length} coisas. Está certo?`}
             </Text>
             {items.map((it) => {
-              const pal = palettes[it.kind];
+              const pal = palettes[it.kind] || palettes.study;
               const expanded = open === it.key;
+              const acad = ACAD.has(it.kind);
               return (
                 <View key={it.key} style={[st.card, { borderLeftColor: pal.main }, expanded && st.cardOpen]}>
                   <Pressable style={st.summary} onPress={() => setOpen(expanded ? null : it.key)}>
@@ -378,7 +456,7 @@ function Content({ onClose, accent = colors.ink }) {
                         <Text style={[st.tagText, { color: pal.main }]}>{AREA_LABEL[it.kind]}</Text>
                       </View>
                       <Text style={st.sumTitle}>{it.title || 'Sem nome'}</Text>
-                      <Text style={st.sumMeta}>{summarize(it)}</Text>
+                      <Text style={st.sumMeta}>{describe(it)}</Text>
                       {subjectOf(it) ? (
                         <View style={st.subjectRow}>
                           <Dot color={subjectColor(subjectOf(it).color).main} size={8} style={{ marginRight: 6 }} />
@@ -407,7 +485,39 @@ function Content({ onClose, accent = colors.ink }) {
                       </View>
                     </View>
                   ) : null}
-                  {expanded ? (
+                  {expanded && acad ? (
+                    <View style={st.fields}>
+                      <Text style={st.placeText}>Matéria</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                        {subjects.filter((x) => !x.archived).map((x) => (
+                          <Chip key={x.id} label={x.name} color={subjectColor(x.color).main} active={it.subjectId === x.id} onPress={() => { setCorrected(true); patch(it.key, { subjectId: x.id }); }} />
+                        ))}
+                      </View>
+                      {!subjects.some((x) => !x.archived) ? <Text style={st.sumMeta}>Cadastre as matérias em Estudos → Matérias.</Text> : null}
+                      {it.kind === 'grade' ? (
+                        <View style={{ flexDirection: 'row' }}>
+                          <View style={{ flex: 2, marginRight: 10 }}>
+                            <Text style={st.placeText}>Avaliação</Text>
+                            <Field value={it.title} onChangeText={(v) => patch(it.key, { title: v })} placeholder="P1" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={st.placeText}>Nota</Text>
+                            <Field value={it.scoreText} onChangeText={(v) => patch(it.key, { scoreText: v })} keyboardType="decimal-pad" maxLength={6} />
+                          </View>
+                        </View>
+                      ) : (
+                        <View>
+                          <Text style={st.placeText}>Dia</Text>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                            <Chip label="Hoje" color={pal.main} active={it.date === todayISO()} onPress={() => patch(it.key, { date: todayISO() })} />
+                            <Chip label="Ontem" color={pal.main} active={it.date === addDays(todayISO(), -1)} onPress={() => patch(it.key, { date: addDays(todayISO(), -1) })} />
+                          </View>
+                          <Text style={st.placeText}>Aulas perdidas</Text>
+                          <Field value={it.countText} onChangeText={(v) => patch(it.key, { countText: v.replace(/\D/g, '') })} keyboardType="number-pad" maxLength={2} />
+                        </View>
+                      )}
+                    </View>
+                  ) : expanded ? (
                     <View style={st.fields}>
                       <Toggle options={KINDS} value={it.kind} color={pal.main} onChange={(k) => changeKind(it, k)} />
                       <ItemFields value={it} onChange={(p) => patch(it.key, p)} />

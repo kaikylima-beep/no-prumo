@@ -2,7 +2,28 @@
 
 App Android pessoal com três áreas (Tarefas, Finanças e Estudos), uma Agenda e um botão de microfone que organiza o que você fala. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.12.3**
+Versão atual: **1.13.0**
+
+## Novidades da 1.13.0 · Notas e faltas
+
+- **Notas e faltas em cada matéria.** Toque numa matéria (Estudos → Matérias) para ver as faltas e as notas dela. O cartão da matéria já mostra "Faltas 3 de 14 · Média 7,2".
+- **Faltas por aula:** o app conta pelo horário da matéria e pela duração da aula (Ajustes → Ajustar perfil → Faculdade; na UTFPR, 50 minutos). Um horário de 100 minutos são 2 aulas: faltar nele são 2 faltas. O total do semestre sai dos horários, sem os feriados, e o limite (25%, dá para mudar) vira "pode faltar mais 4 aulas". Perto do limite e quando passa, o app avisa.
+- **Marcar falta:** "Faltei hoje (2 aulas)" na matéria, "Marcar falta" para outro dia, ou falando "faltei na aula de física" ou "faltei hoje" (todas as aulas do dia).
+- **"Foi na aula?"** (opcional, Ajustes → Avisos): 5 minutos depois de cada aula chega o aviso com **Fui** e **Faltei**. Faltei conta as faltas sozinho, com o app fechado.
+- **Notas:** cada avaliação (P1, trabalho, lista…) com a nota, quanto vale e o peso, se quiser. Com os pesos, o app mostra a média e quanto falta para passar. A média para passar e a nota máxima ficam em Ajustar perfil → Faculdade, porque cada faculdade tem as suas. O campo "Como o professor calcula" guarda a fórmula do caderno.
+- **Nota pela voz:** "tirei 7,5 na P1 de cálculo". Se a P1 já estava cadastrada sem nota, ela é preenchida.
+- **"Já saiu a nota?"**: depois de uma prova ou trabalho de uma matéria, a aba Itens pergunta, com "Lançar nota".
+
+## Correções da 1.13.0 · Finanças mais limpo
+
+- **Pix devolvido:** a devolução e o Pix que voltou viram "Devolvido" e saem de Entrou, Saiu, orçamento, recebimentos e gráficos. O saldo continua certo.
+- **Nomes da importação:** sem a data grudada ("…0711") e sem códigos do banco ("RSCSS"). Transporte coletivo vira Transporte.
+- **Rendimento da aplicação** vira Investimentos e não conta mais como extra.
+- **Juros e IOF** viram "Tarifas e juros", não necessários.
+- **Categoria aprendida:** uma compra numa loja que você já classificou chega com a mesma categoria.
+- **Fatura do cartão** aparece à parte no orçamento ("junta os dois tipos"), sem marca de necessário.
+- **Menos números repetidos no topo (Avançado):** saiu "Mudança no saldo" (era o "Hoje nas contas" menos o "Começou o mês", que estão logo acima); o "Previsto no fim do mês" some do destaque quando o "Ainda pode gastar" já mostra o mesmo dinheiro; sem saldo de conta, o cartão de baixo não repete a sobra do topo. Nenhuma função saiu.
+- O que já estava importado é corrigido uma vez, ao abrir o app.
 
 ## Correções da 1.12.3
 

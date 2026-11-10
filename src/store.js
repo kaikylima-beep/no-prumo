@@ -10,6 +10,8 @@ import { restartApp, SETTINGS_KEY } from './Root';
 import { onExternalChange } from './actions';
 import { currentSlot, slotKey, slotLabel } from './recurrence';
 import { migrate113, refundChanges } from './financeFixes';
+import { DEFAULT_ACADEMIC, absenceSummary, absenceStatusText } from './academic';
+import { scheduleAttendance } from './attendance';
 
 const Ctx = createContext(null);
 export const useData = () => useContext(Ctx);
@@ -46,6 +48,7 @@ const DEFAULT_SETTINGS = {
   hideBalance: false, // 1.12.1: valores de dinheiro trocados por "R$ ••••" (fica lembrado)
   voiceOnDevice: true, // 1.12.1: reconhecer no próprio celular quando o aparelho permitir
   voice: { learned: {} }, // 1.12.1: trocas que a pessoa corrigiu ("pique" -> "pix")
+  academic: DEFAULT_ACADEMIC, // 1.13: média para passar, nota máxima, duração da aula, limite de faltas, perguntar depois da aula
   testMode: false, // 1.12.2: modo de teste (frases para o desenvolvedor). Liga tocando 5 vezes na versão, em Ajustes
 };
 
@@ -120,7 +123,7 @@ export function DataProvider({ children }) {
   const [misheard, setMisheard, l5] = useStoredState('@org2/misheard', []);
   const [settingsRaw, setSettings, l6] = useStoredState('@org2/settings', DEFAULT_SETTINGS);
   const [accounts, setAccounts, l7] = useStoredState('@org2/accounts', []);
-  const [subjects, setSubjects, l8] = useStoredState('@org2/subjects', []); // 1.12
+  const [subjects, setSubjects, l8, reloadSubjects] = useStoredState('@org2/subjects', []); // 1.12
   const loaded = l1 && l2 && l3 && l4 && l5 && l6 && l7 && l8;
   const subjectsRef = useRef(subjects);
   subjectsRef.current = subjects;
@@ -138,6 +141,7 @@ export function DataProvider({ children }) {
       budget: { ...DEFAULT_SETTINGS.budget, ...(settingsRaw.budget || {}) },
       semester: { ...DEFAULT_SETTINGS.semester, ...(settingsRaw.semester || {}) },
       voice: { learned: {}, ...(settingsRaw.voice || {}) },
+      academic: { ...DEFAULT_ACADEMIC, ...(settingsRaw.academic || {}) },
     }),
     [settingsRaw]
   );
@@ -172,6 +176,8 @@ export function DataProvider({ children }) {
       }
       setters[kind]((prev) => prev.map((x) => ({ ...x, notifIds: updates[x.id] || [] })));
     }
+    // 1.13: o cancelAll também apagou os avisos "Foi na aula?"
+    scheduleAttendance(subjectsRef.current, settingsRef.current).catch(() => {});
   }, []);
 
   // refaz os avisos de uma área só (ex.: Finanças, ao ligar "Ocultar valores")
@@ -480,6 +486,7 @@ export function DataProvider({ children }) {
     reloadTasks();
     reloadStudy();
     reloadFinance();
+    reloadSubjects(); // 1.13: "Faltei" no aviso
   }, []);
   useEffect(() => {
     const off = onExternalChange(reloadLists);
@@ -549,6 +556,61 @@ export function DataProvider({ children }) {
   }, []);
 
   // Liga itens antigos a uma matéria. Devolve o Desfazer.
+  // ---------- notas e faltas (1.13) ----------
+  const setAcademic = useCallback((changes) => {
+    setSettings((prev) => ({ ...prev, academic: { ...DEFAULT_ACADEMIC, ...(prev.academic || {}), ...changes } }));
+  }, []);
+  const patchSubject = (id, fn) => setSubjects((prev) => prev.map((x) => (x.id === id ? fn(x) : x)));
+  // nota nova; se a matéria já tem a avaliação com esse nome e sem nota (ex.: "P2", com peso), preenche ela
+  const addGrade = useCallback((subjectId, g) => {
+    const subject = subjectsRef.current.find((x) => x.id === subjectId);
+    if (!subject) return () => {};
+    const before = subject.grades || [];
+    const same = before.find((x) => (x.score === null || x.score === undefined) && String(x.name || '').trim().toLowerCase() === String(g.name || '').trim().toLowerCase());
+    const grade = same ? { ...same, ...g, id: same.id, weight: g.weight || same.weight || null } : { id: uid(), createdAt: Date.now(), max: null, weight: null, date: todayISO(), ...g };
+    patchSubject(subjectId, (x) => ({ ...x, grades: same ? (x.grades || []).map((y) => (y.id === same.id ? grade : y)) : [...(x.grades || []), grade] }));
+    return () => patchSubject(subjectId, (x) => ({ ...x, grades: before }));
+  }, []);
+  const updateGrade = useCallback((subjectId, id, changes) => {
+    patchSubject(subjectId, (x) => ({ ...x, grades: (x.grades || []).map((y) => (y.id === id ? { ...y, ...changes } : y)) }));
+  }, []);
+  const removeGrade = useCallback((subjectId, id) => {
+    const subject = subjectsRef.current.find((x) => x.id === subjectId);
+    const before = (subject && subject.grades) || [];
+    patchSubject(subjectId, (x) => ({ ...x, grades: (x.grades || []).filter((y) => y.id !== id) }));
+    return () => patchSubject(subjectId, (x) => ({ ...x, grades: before }));
+  }, []);
+  const setFormula = useCallback((subjectId, formula) => patchSubject(subjectId, (x) => ({ ...x, formula })), []);
+  // falta: devolve { undo, note } (note = aviso de limite, se estiver perto ou passou)
+  const addAbsence = useCallback((subjectId, { date, count }) => {
+    const subject = subjectsRef.current.find((x) => x.id === subjectId);
+    if (!subject) return { undo: () => {}, note: null };
+    const absence = { id: uid(), date: date || todayISO(), count: Math.max(1, Number(count) || 1) };
+    patchSubject(subjectId, (x) => ({ ...x, absences: [...(x.absences || []), absence] }));
+    const st = settingsRef.current;
+    const sum = absenceSummary({ ...subject, absences: [...(subject.absences || []), absence] }, st.academic, st.semester, st.profile.state);
+    const note = sum.status === 'near' || sum.status === 'over' ? `${subject.name}: ${absenceStatusText(sum).toLowerCase()}` : null;
+    return { undo: () => patchSubject(subjectId, (x) => ({ ...x, absences: (x.absences || []).filter((y) => y.id !== absence.id) })), note };
+  }, []);
+  const removeAbsence = useCallback((subjectId, id) => {
+    const subject = subjectsRef.current.find((x) => x.id === subjectId);
+    const before = (subject && subject.absences) || [];
+    patchSubject(subjectId, (x) => ({ ...x, absences: (x.absences || []).filter((y) => y.id !== id) }));
+    return () => patchSubject(subjectId, (x) => ({ ...x, absences: before }));
+  }, []);
+  // "Já saiu a nota?" respondido (ou "Agora não"): não pergunta de novo por aquela prova
+  const markGradeAsked = useCallback((studyId) => setStudy((prev) => prev.map((t) => (t.id === studyId ? { ...t, gradeAsked: true } : t))), []);
+
+  // aviso "Foi na aula?" (opcional): agenda as próximas 2 semanas a cada abertura e a cada mudança
+  const attendKey = JSON.stringify([settings.academic, settings.semester, settings.profile.state, subjects.map((x) => [x.id, x.archived, x.name, x.schedules])]);
+  useEffect(() => {
+    if (!loaded) return undefined;
+    const t = setTimeout(() => {
+      scheduleAttendance(subjectsRef.current, settingsRef.current).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [loaded, attendKey]);
+
   const linkItems = useCallback((subjectId, itemIds) => {
     const set = new Set(itemIds);
     setStudy((prev) => prev.map((t) => (set.has(t.id) ? { ...t, subjectId } : t)));
@@ -732,6 +794,14 @@ export function DataProvider({ children }) {
       archiveSubjects,
       setSemester,
       linkItems,
+      setAcademic,
+      addGrade,
+      updateGrade,
+      removeGrade,
+      setFormula,
+      addAbsence,
+      removeAbsence,
+      markGradeAsked,
       recurrences,
       misheard,
       settings,

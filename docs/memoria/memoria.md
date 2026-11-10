@@ -1,6 +1,6 @@
 # No Prumo: Memória do Projeto (fonte da verdade)
 
-Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), em teste no celular. Vale o que está aqui. Para o que existe, a referência é o código no GitHub; para o que foi decidido, a decisão mais recente do projeto. **Frases que o app entendeu errado: `docs/memoria/testes.md` (campo Testes), ler antes de começar qualquer versão.** Calendário das versões: `docs/memoria/plano.md`.
+Estado em 10/11/2026, versão **1.13.0** (versionName 1.13.0, versionCode 23), em teste no celular. A 1.12.3 está na `main` (Release v1.12.3). Vale o que está aqui. Para o que existe, a referência é o código no GitHub; para o que foi decidido, a decisão mais recente do projeto. **Frases que o app entendeu errado: `docs/memoria/testes.md` (campo Testes), ler antes de começar qualquer versão.** Calendário das versões: `docs/memoria/plano.md`.
 
 > Trazida do Projeto do claude.ai para o repositório em 10/11/2026. Daqui em diante, a fonte é este arquivo.
 
@@ -29,7 +29,7 @@ Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), e
 | Leitura de PDF | Parser próprio com `pako` |
 | Fontes | `expo-font` com Inter e Space Grotesk |
 | Nativo próprio | Módulo Kotlin `modules/share-receiver` e plugin `plugins/withShareTarget.js` (menu Compartilhar para PDF e CSV) |
-| Testes | `scripts/test-parser.mjs` (`npm test`), 474 casos (1.12.3), com placar do banco de frases reais |
+| Testes | `scripts/test-parser.mjs` (`npm test`), 536 casos (1.13.0), com placar do banco de frases reais |
 
 **Android:** pacote `com.meuorganizador.app` (não muda, para instalar por cima sem perder dados), minSdk 24, targetSdk 36.
 
@@ -80,9 +80,9 @@ Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), e
 
 ### Ordem do que falta (atualizada em 09/11/2026; datas em `plano.md`)
 
-1. **Agora: testar a 1.12.3 no celular** (lista em `testes.md`), com o modo de teste ligado, mandando as frases que saírem erradas para o campo Testes. Continua valendo o que ficou da 1.12/1.12.2 (matérias, ocupação, feriados, dicionário pessoal).
+1. **Agora: testar a 1.13.0 no celular** (lista em `testes.md`). A 1.12.4 (Finanças mais limpo) entrou junto na 1.13, a pedido do Kaiky (10/11), para ganhar tempo., com o modo de teste ligado, mandando as frases que saírem erradas para o campo Testes. Continua valendo o que ficou da 1.12/1.12.2 (matérias, ocupação, feriados, dicionário pessoal).
    - **Medição da voz (proposta do conselho de 09/11, não decidida pelo Kaiky):** 30 frases reais, sem ensaiar, anotando o modo em Ajustes → Voz. Com 75% ou mais certas sem editar, parar de mexer na voz e seguir para o lançamento; abaixo disso, teste de um dia com Whisper no aparelho. Depois, 5 a 10 colegas com celulares diferentes, 10 frases cada.
-2. **1.13, Notas e faltas** (+ campo Testes): notas por avaliação, com peso ou fórmula opcionais; faltas por matéria usando os horários que a matéria já tem; aviso opcional "Foi na aula?" (Fui / Faltei); limite (25%, editável) com aviso perto dele; voz ("tirei 7,5 na P1 de cálculo", "faltei na aula de física").
+2. **1.13.0, Notas e faltas + Finanças mais limpo:** feita em 10/11, em teste. Detalhes nas seções Estudos e Finanças.
 3. **1.14, Meus horários fixos** (+ campo Testes): cadastro único de aulas, trabalho/estágio e outros, por voz ou à mão, com grade semanal e exceções (feriado, sem aula, semana de provas, reposição, feriado municipal à mão). Bloco: `{ tipo: aula | trabalho | outro, título, matéria?, dias, início, fim, local, de, até, cor }`. Uma frase por matéria ("aula de cálculo segunda e quarta 10h") já cria a matéria, se ela não existir. Telas a desenhar: grade semanal, formulário do bloco e marcar exceção num dia. Junto: **trocar a chave de assinatura** (backup → instalar → restaurar). Gerar a chave própria de modo que ela possa virar a chave de assinatura da Play Store depois (Play App Signing aceita importar a chave existente), para não exigir reinstalação de novo.
 4. **1.15, Seu dia (tela Hoje)** (+ campo Testes): primeira tela ao abrir, no lugar da Agenda na barra; linha do tempo com fixos, tarefas com hora, provas, entregas, contas e horários livres. Simples: "Agora / Depois / Ainda hoje". Avançado: linha do tempo colorida. Calendário do mês e feriados ficam dentro dela, nos dois visuais. Resumo de manhã e aviso antes da aula são opcionais. Telas a desenhar: Hoje no Simples e no Avançado (claro e escuro), dia sem nada, dia cheio e "agora" no meio de uma aula.
 5. **1.16, Revisões automáticas** (+ campo Testes): cada prova gera 2 ou 3 sessões, só em horário livre, nunca em hora de aula ou estágio, com Feito e Adiar. Exemplo: prova no dia 20 vira revisões segunda, quarta e na véspera, 40 min cada.
@@ -122,6 +122,12 @@ Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), e
 - Relatório, entrega, laboratório ou apresentação sem matéria perguntam "Faculdade ou [ocupação]?". Citar a ocupação manda para Tarefas; citar faculdade, prova ou aula deixa em Estudos; ocupação "Só estudo" não pergunta.
 - "99" só é o app de corrida com contexto claro. "N e DD" e "N reais e DD" viram centavos, exceto em data, hora, unidade, outro número depois ou dois gastos com nome.
 - Avisos automáticos, em dias antes, por importância da área (alta / média / baixa): Estudos 14-7-3-1-0 / 7-3-1-0 / 1-0; Finanças 3-1-0 / 1-0 / 0; Tarefas 1-0 / 0 / 0. "Me lembrar N dias antes" usa N e o próprio dia.
+- **Notas e faltas (1.13, `src/academic.js`):** regras da faculdade em `settings.academic` (Ajustar perfil → Faculdade): `passGrade` (6), `maxGrade` (10), `classMinutes` (50, UTFPR), `absencePct` (25), `askAttendance` (aviso "Foi na aula?", desligado por padrão). Cada faculdade tem as suas: nada fixo no código.
+  - **Faltas por aula:** horário de 100 min com aula de 50 = 2 aulas = 2 faltas (`lessonsInBlock`, arredonda). Total do semestre = aulas pelos horários da matéria, do início ao fim do semestre, sem feriados nacionais e estaduais (ponto facultativo conta como aula). Limite = piso de `absencePct` % do total. "Perto" quando o que falta cabe numa semana de aulas (mínimo 2). Sem semestre ou sem horário: só a contagem.
+  - **Notas:** avaliação `{ name, score (null = ainda não saiu), max (null = maxGrade), weight }`; nota normalizada para a escala de `maxGrade`. Média e "quanto falta" **só com o peso de todas as avaliações** (o Kaiky: cada professor calcula de um jeito). Campo livre `formula` ("Como o professor calcula").
+  - **Voz:** "tirei 7,5 na P1 de cálculo" (nota; preenche a avaliação de mesmo nome sem nota), "faltei na aula de física", "faltei hoje" (todas as aulas do dia), "faltei ontem…", "não fui na aula de…". Frases com "reais", "pix", "caixa" não viram nota. Essas frases saem antes do interpretador geral (`isAcademicStart` + `parseAcademic` na confirmação).
+  - **"Foi na aula?":** avisos `DATE` para as próximas 2 semanas, 5 min depois do fim de cada aula, refeitos a cada abertura e a cada mudança (`src/attendance.js`, ids em `@org2/attendIds`). Categoria `aula` com Fui / Faltei; Faltei é tratado em `actions.js` com o app fechado e avisa se chegou perto do limite. `rescheduleAll` e o restaurar backup refazem esses avisos.
+  - **"Já saiu a nota?":** prova/trabalho de uma matéria nos últimos 30 dias, sem nota ligada (`grade.studyId`) e sem `gradeAsked`, aparece na aba Itens.
 - Arquivar matéria não apaga nada e tem Desfazer. Terminado o semestre com matérias ativas, o app avisa.
 - Feriados: nacionais, Sexta-feira Santa, Carnaval e Corpus Christi (ponto facultativo) e os 27 estados, sem internet. O Paraná não tem feriado estadual (19/12 é só data comemorativa). A tabela é conferida todo ano; Santa Catarina tem projeto de novo feriado em 25/11 (PL 23/2026).
 
@@ -140,6 +146,8 @@ Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), e
 - **Previsto no fim do mês:** dinheiro nas contas + a receber − a pagar + salário base ainda não lançado (só renda fixa).
 - **Indicadores:** meses marcados "não conta" saem das médias; comparação com 3 meses anteriores até o mesmo dia; projeção de 3 meses pelo tipo de renda.
 - **Agenda:** de Finanças mostra só o que vai cair.
+- **Finanças mais limpo (1.13, `src/financeFixes.js`):** Pix devolvido ("DEV PIX") e o Pix de mesmo valor recebido até 5 dias antes viram categoria **Devolvido** (`refundPair` liga os dois) e saem de renda, gasto, recebimentos, indicadores e gráficos (`isRefund` em `budget.js`); o saldo continua contando. Rendimento ("REND PAGO APLIC AUT") = Investimentos, fora dos extras (`isExtraIncome`). Juros/IOF/tarifa = **Tarifas e juros**, não necessário. Transporte coletivo = Transporte. Loja já classificada pela pessoa passa a categoria para a importação (`learnedCategory`). Fatura paga aparece à parte no orçamento (`cardBill`; a conta do limite não mudou). Correção única dos dados importados com `settings.fin113`; pares de devolução conferidos a cada mudança.
+- **Topo do Avançado (1.13):** saiu "Mudança no saldo" (= Hoje − Começou, já na ponte); "Previsto no fim do mês" some do destaque quando o "Ainda pode gastar" foi cortado pelo dinheiro (`bud.capped`); sem saldo de conta, o cartão de baixo vira "Entradas e saídas" sem repetir a sobra do destaque.
 - **Ocultar valores (1.12.1):** olho no topo de Finanças (Simples e Avançado) liga `settings.hideBalance`, que fica lembrado. `showMoney()` (em `utils.js`) troca os valores por "R$ ••••" em Finanças, Indicadores, "Tudo do mês", contas, Agenda, textos do orçamento (saudação e aviso de gasto) e rótulos dos gráficos. Continuam visíveis, de propósito: confirmação por voz, edição, revisão de importação e pop-ups de renda. **Desde a 1.12.3, o texto dos avisos do celular também esconde o valor** ("Vence hoje: Conta de luz"), e ligar ou desligar refaz os avisos de Finanças.
 
 ### Importação (PDF e CSV, tudo no celular)
@@ -210,6 +218,7 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
 | `@org2/misheard` | Frases guardadas (só no modo de teste, desde a 1.12.2), até 200 |
 | `@org2/settings` | Perfil, ajustes, orçamento, dicionário da voz |
 | `@org2/handled` | Botões de aviso já tratados, até 150 |
+| `@org2/attendIds` | Ids dos avisos "Foi na aula?" agendados (1.13; não entra no backup) |
 | `@org2/_antes_da_restauracao` | Cópia feita antes de restaurar um backup (não entra no backup) |
 
 Áudios das frases guardadas: arquivos `frase-<hora>.wav` na pasta do app (`Paths.document`); não entram no backup.
@@ -240,7 +249,10 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
 // Matéria
 { id, name, aliases: [], color: 0..7, room,
   schedules: [{ days: [0-6], start, end }],
-  archived, archivedAt, semester, createdAt }
+  archived, archivedAt, semester, createdAt,
+  grades: [{ id, name, score /* null = sem nota */, max, weight, date, studyId? }],   // 1.13
+  formula,                                                                          // 1.13, texto livre
+  absences: [{ id, date, count, fromAlert?, end? }] }                               // 1.13
 
 // Frase guardada (1.12.1)
 { id, text, parsed, at, heard /* 1ª versão do Android */, alts: [], audio /* uri ou null */, fixed: [] /* o que foi salvo */ }
@@ -259,7 +271,9 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
   hideBalance,      // 1.12.1
   voiceOnDevice,    // 1.12.1, padrão true
   voice: { learned: { '<de>': { to, n } } },  // 1.12.1
-  testMode }        // 1.12.2, padrão false
+  testMode,         // 1.12.2, padrão false
+  academic: { passGrade, maxGrade, classMinutes, absencePct, askAttendance },  // 1.13
+  fin113 }          // 1.13: correção única de Finanças já feita
 
 // Item vindo do interpretador (antes de salvar) pode trazer askDay: true
 
@@ -270,10 +284,12 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
 
 ### Avisos
 - Canais `lembretes-som` e `lembretes-vibrar`.
-- Categorias com botões: lembrete (Feito / Adiar 10 min), conta (Paguei / Lembrar amanhã), receita (Recebi / Lembrar amanhã).
+- Categorias com botões: lembrete (Feito / Adiar 10 min), conta (Paguei / Lembrar amanhã), receita (Recebi / Lembrar amanhã), aula (Fui / Faltei, 1.13).
 - Tarefa em segundo plano `meu-organizador-botoes-dos-avisos`.
 
 ## 5. Estado Atual (O que já está pronto e funcionando)
+
+**1.13.0 (10/11/2026):** 536/536 testes; notas e faltas, Finanças mais limpo. Conferido no navegador (Simples, Avançado, claro e escuro): matérias com faltas e média, tela Notas e faltas, "Já saiu a nota?", voz "tirei… e faltei…", Ajustes → Faculdade e o aviso "Foi na aula?", Finanças sem os números repetidos e com Devolvido/Tarifas e juros. Não testado fora do celular: os avisos "Foi na aula?" e o Faltei com o app fechado.
 
 **1.12.3 (10/11/2026):** 474/474 testes; restaurar e "voltar ao que tinha" refazem os avisos; "ocultar valores" vale nos avisos; saudação conta só o que é para hoje (igual ao cartão de Tarefas); frases nº 3 e 4 do campo Testes. APK de teste pelo GitHub Actions.
 

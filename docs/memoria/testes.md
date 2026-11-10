@@ -13,36 +13,30 @@ Criado em 09/11/2026, a pedido do Kaiky: enquanto o app está em fase de testes,
 4. **Na próxima versão:** cada frase do tipo Regra vira teste automático no `npm test` (com nomes trocados), e a regra geral é corrigida.
 5. **Fechamento:** a frase sai da lista de abertas quando passa no celular.
 
-## Testar no celular · 1.12.3
-Instale por cima (os dados continuam). Marque o que funcionou; o que não funcionar, mande a frase ou o print.
+## Testar no celular · 1.13.0
+Antes de instalar: Ajustes → Backup → Salvar. Instale por cima (os dados continuam).
 
-**Avisos e backup**
-- [ ] Ajustes → Backup → Salvar backup. Depois Restaurar esse mesmo arquivo. O app reinicia.
-- [ ] Depois de restaurar: crie uma tarefa "lavar o carro daqui a 5 minutos" e veja se o aviso chega.
-- [ ] Um lembrete que já existia antes (conta a pagar, prova, remédio) continua avisando no horário.
+**Faculdade e faltas**
+- [ ] Ajustes → Ajustar perfil → Faculdade: conferir média 6, nota 10, aula de 50 min, faltas 25%.
+- [ ] Estudos → Matérias: cada matéria mostra "Faltas X de Y · …". Sem semestre, informe o semestre.
+- [ ] Tocar numa matéria com aula de 100 min: "Faltei hoje (2 aulas)" conta 2; Desfazer na faixa de baixo.
+- [ ] Falar "faltei na aula de [matéria]" e "faltei hoje".
+- [ ] Ajustes → Avisos → "Perguntar depois da aula se você foi": depois da próxima aula chega "Foi na aula?". Tocar em Faltei com o app fechado e conferir a falta na matéria.
 
-**Ocultar valores**
-- [ ] Em Finanças, feche o olho. Fale "conta de luz 120 amanhã".
-- [ ] Amanhã às 8h, com o celular bloqueado, o aviso deve dizer "Vence hoje: Conta de luz", **sem o valor**.
-- [ ] Abra o olho de novo: os próximos avisos voltam a mostrar o valor.
+**Notas**
+- [ ] Na matéria, "+ Avaliação": P1 (peso 40), P2 (peso 40, sem nota), Trabalho (peso 20). Conferir a média e "Precisa de X nas próximas".
+- [ ] Falar "tirei 8 na P2 de [matéria]": a P2 cadastrada recebe a nota.
+- [ ] Copiar a fórmula do professor em "Como o professor calcula".
+- [ ] Uma prova de uma matéria que já passou aparece em Itens como "Já saiu a nota?".
 
-**Saudação**
-- [ ] Feche o app por mais de 10 minutos e abra. "Você tem N tarefas para hoje" = o número do cartão azul de Tarefas.
-- [ ] Com uma prova só daqui a vários dias, o app **não** diz "você precisa concluir seus lembretes de Estudos".
-
-**Voz sem Bixby**
-- [ ] Tocar no microfone 3 vezes, em momentos diferentes: o Bixby **não** abre.
-- [ ] Ajustes → Voz → "Última vez:" deve citar o Google.
-
-**Voz (campo Testes)**
-- [ ] "chegando em casa eu tenho que lavar o carro" → Tarefa "Lavar carro".
-- [ ] "saindo do trabalho eu preciso passar no mercado" → Tarefa "Passar mercado".
-- [ ] "fazer o pix do [nome] de 60 reais" → Finanças, **a pagar**.
-- [ ] "fiz o pix do [nome] de 60 reais" → Finanças, **pago**.
-- [ ] Se aparecer "pics": toque no texto ouvido e troque por "pix". Na 2ª vez o app troca sozinho.
+**Finanças**
+- [ ] Abrir Finanças: o Pix devolvido (e o Pix que voltou) aparece como "Devolvido" e não entra em Saiu.
+- [ ] Juros e IOF em "Tarifas e juros"; rendimento em Investimentos; nomes sem "RSCSS" e sem data grudada.
+- [ ] No Avançado: não tem mais "Mudança no saldo"; a fatura aparece à parte no orçamento.
+- [ ] Importar um extrato novo: compras de lojas que você já classificou chegam com a categoria certa.
 
 **Uso normal**
-- [ ] Usar 3 dias com o modo de teste ligado e mandar as frases guardadas.
+- [ ] 3 dias com o modo de teste ligado e mandar as frases guardadas.
 
 ## Frases abertas
 

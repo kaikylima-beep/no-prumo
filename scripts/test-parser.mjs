@@ -1470,5 +1470,78 @@ export default {
   ok('topo do Avançado: "Previsto" não repete o "Ainda pode gastar" cortado', /!\(hasBudget && !bud\.noSalary && bud\.capped\)/.test(fs1), true);
 }
 
+// ---- 1.13: notas e faltas (dados inventados)
+{
+  const ok = (name, got, exp) => {
+    total++;
+    const same = JSON.stringify(got) === JSON.stringify(exp);
+    if (!same) { fails++; console.log(`FALHOU  1.13 notas e faltas: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.13 notas e faltas: ${name}`);
+  };
+  const d5 = mkdtempSync(join(tmpdir(), 'acad113-'));
+  const cp = (src, dst, reps = []) => writeFileSync(join(d5, dst), reps.reduce((t, [a, b]) => t.split(a).join(b), readFileSync(join(root, src), 'utf8')));
+  cp('src/utils.js', 'utils.mjs');
+  cp('src/recurrence.js', 'recurrence.mjs', [["from './utils'", "from './utils.mjs'"]]);
+  cp('src/parser.js', 'parser.mjs', [["from './utils'", "from './utils.mjs'"], ["from './recurrence'", "from './recurrence.mjs'"]]);
+  cp('src/subjects.js', 'subjects.mjs', [["from './parser'", "from './parser.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
+  cp('src/holidays.js', 'holidays.mjs', [["from './utils'", "from './utils.mjs'"]]);
+  cp('src/academic.js', 'academic.mjs', [["from './parser'", "from './parser.mjs'"], ["from './subjects'", "from './subjects.mjs'"], ["from './holidays'", "from './holidays.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
+  const AD = await import(pathToFileURL(join(d5, 'academic.mjs')).href);
+  rmSync(d5, { recursive: true, force: true });
+  const A = { ...AD.DEFAULT_ACADEMIC };
+  ok('aula de 100 min com aula de 50 = 2 aulas', AD.lessonsInBlock('07:30', '09:10', 50), 2);
+  ok('aula de 50 min = 1', AD.lessonsInBlock('10:00', '10:50', 50), 1);
+  ok('faculdade com aula de 60 min', AD.lessonsInBlock('08:00', '10:00', 60), 2);
+  // Cálculo: segunda 07:30–09:10 (2 aulas) e quarta 10:00–10:50 (1 aula)
+  const calc = { id: 'c', name: 'Cálculo 2', aliases: ['calc 2'], schedules: [{ days: [1], start: '07:30', end: '09:10' }, { days: [3], start: '10:00', end: '10:50' }], grades: [], absences: [] };
+  const fis = { id: 'f', name: 'Física 1', aliases: [], schedules: [{ days: [1], start: '13:00', end: '14:40' }], grades: [], absences: [] };
+  ok('aulas num dia: segunda tem 2 de Cálculo', AD.lessonsOn(calc, '2026-11-09', 50), 2);
+  ok('aulas num dia: terça não tem', AD.lessonsOn(calc, '2026-11-10', 50), 0);
+  // semestre de 4 semanas, sem feriado: 4 segundas (2) + 4 quartas (1) = 12
+  const sem = { start: '2026-08-03', end: '2026-08-30' };
+  ok('total de aulas do semestre pelos horários', AD.semesterLessons(calc, sem, 50, null), 12);
+  ok('feriado não conta como aula (07/09 é segunda)', AD.semesterLessons(calc, { start: '2026-09-07', end: '2026-09-13' }, 50, null), 1);
+  ok('sem semestre: sem total', AD.semesterLessons(calc, null, 50), null);
+  const withAbs = { ...calc, absences: [{ id: 'x', date: '2026-08-03', count: 2 }] };
+  ok('limite de 25%: 12 aulas → 3 faltas; faltou 2 → pode mais 1 (perto)', AD.absenceSummary(withAbs, A, sem, null), { count: 2, total: 12, limit: 3, left: 1, status: 'near' });
+  ok('texto do limite', AD.absenceStatusText(AD.absenceSummary(withAbs, A, sem, null)), 'Pode faltar mais 1 aula');
+  ok('passou do limite', AD.absenceSummary({ ...calc, absences: [{ count: 2 }, { count: 2 }] }, A, sem, null).status, 'over');
+  ok('limite configurável (30%)', AD.absenceSummary(withAbs, { ...A, absencePct: 30 }, sem, null).limit, 3);
+  // notas com peso: P1 40%, P2 40%, trabalho 20%
+  const g = { ...calc, grades: [{ id: 1, name: 'P1', score: 5, weight: 40 }, { id: 2, name: 'Trabalho', score: 8, weight: 20 }, { id: 3, name: 'P2', score: null, weight: 40 }] };
+  const gs = AD.gradeSummary(g, A);
+  ok('média com peso do que já saiu', gs.average, 6);
+  ok('quanto falta na P2 para média 6', [gs.needed, gs.status], [6, 'needs']);
+  ok('média para passar configurável (7)', AD.gradeSummary(g, { ...A, passGrade: 7 }).needed, 8.5);
+  ok('impossível: precisaria de mais que 10', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 0, weight: 80 }, { name: 'P2', score: null, weight: 20 }] }, A).status, 'impossible');
+  ok('todas as notas: média final e passou', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 7, weight: 1 }, { name: 'P2', score: 6, weight: 1 }] }, A), { graded: 2, total: 2, withWeights: true, average: 6.5, needed: null, status: 'passed' });
+  ok('sem pesos: só mostra as notas, sem média inventada', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 7 }, { name: 'P2', score: 6 }] }, A).average, null);
+  ok('lista valendo 2: nota 1,5 vira 7,5 de 10', AD.gradeSummary({ ...g, grades: [{ name: 'Lista', score: 1.5, max: 2, weight: 1 }] }, A).average, 7.5);
+  ok('nota "7 e meio"', AD.parseGrade('7 e meio'), 7.5);
+  // voz
+  const subs = [calc, fis];
+  const v1 = AD.parseAcademic('tirei 7,5 na P1 de calc 2', subs, '2026-11-09', A);
+  ok('voz: "tirei 7,5 na P1 de calc 2"', v1.map((x) => [x.kind, x.subjectId, x.title, x.score]), [['grade', 'c', 'P1', 7.5]]);
+  ok('voz: "tirei 8 no trabalho de física 1"', AD.parseAcademic('tirei 8 no trabalho de física 1', subs, '2026-11-09', A).map((x) => [x.subjectId, x.title, x.score]), [['f', 'Trabalho', 8]]);
+  ok('voz: "tirei 50 reais no caixa" não é nota', AD.parseAcademic('tirei 50 reais no caixa', subs, '2026-11-09', A), []);
+  ok('voz: "tirei a roupa do varal" não é nota', AD.parseAcademic('tirei a roupa do varal', subs, '2026-11-09', A), []);
+  ok('voz: "faltei na aula de física" (segunda, 100 min = 2 faltas)', AD.parseAcademic('faltei na aula de física', subs, '2026-11-09', A).map((x) => [x.kind, x.subjectId, x.count, x.date]), [['absence', 'f', 2, '2026-11-09']]);
+  ok('voz: "faltei hoje" = todas as aulas do dia', AD.parseAcademic('faltei hoje', subs, '2026-11-09', A).map((x) => [x.subjectId, x.count]), [['c', 2], ['f', 2]]);
+  ok('voz: "faltei ontem na aula de cálculo 2" (domingo: sem aula, conta 1)', AD.parseAcademic('faltei ontem na aula de cálculo 2', subs, '2026-11-09', A).map((x) => [x.subjectId, x.date, x.count]), [['c', '2026-11-08', 1]]);
+  ok('voz: "não fui na aula de física"', AD.parseAcademic('não fui na aula de física', subs, '2026-11-09', A).map((x) => x.subjectId), ['f']);
+  ok('frase comum não é de nota nem falta', [AD.isAcademicStart('lavar o carro'), AD.isAcademicStart('faltei na aula'), AD.isAcademicStart('Tirei 9 na prova')], [false, true, true]);
+  // "Já saiu a nota?"
+  const study = [
+    { id: 's1', title: 'Prova de cálculo', subjectId: 'c', date: '2026-11-05' },
+    { id: 's2', title: 'Estudar cálculo', subjectId: 'c', date: '2026-11-05' },
+    { id: 's3', title: 'Prova de física', subjectId: 'f', date: '2026-11-20' },
+    { id: 's4', title: 'P2 de cálculo', subjectId: 'c', date: '2026-11-06', gradeAsked: true },
+  ];
+  ok('"Já saiu a nota?": só provas que já passaram e ainda sem nota', AD.gradesToAsk(study, subs, '2026-11-09').map((t) => t.id), ['s1']);
+  ok('com a nota lançada, não pergunta mais', AD.gradesToAsk(study, [{ ...calc, grades: [{ studyId: 's1', score: 7 }] }, fis], '2026-11-09').map((t) => t.id), []);
+  // aviso "Foi na aula?"
+  const ends = AD.upcomingClassEnds([fis], { start: '2026-08-01', end: '2026-12-15' }, A, null, new Date(2026, 10, 9, 12, 0), 7);
+  ok('aviso depois da aula: segunda 14:45 (5 min depois do fim)', ends.map((e) => [e.date, e.end, e.count, e.at.getHours(), e.at.getMinutes()]), [['2026-11-09', '14:40', 2, 14, 45], ['2026-11-16', '14:40', 2, 14, 45]]);
+}
+
 console.log(`\n${total - fails}/${total} passaram`);
 process.exitCode = fails ? 1 : 0;
