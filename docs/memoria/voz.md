@@ -120,7 +120,7 @@ Causa de fundo: não era falta de regra para frase; faltavam **etapas inteiras**
 | 90 frases novas, escritas depois do ajuste, **na 1ª tentativa** | 51 (57%) | 76 (84%) |
 | As mesmas 90, depois de corrigir as regras gerais que elas mostraram | 51 (57%) | 87 (97%) |
 | Banco inteiro, 278 frases | 129 (46%) | 275 (99%) |
-| `npm test` | 536/536 | 855/855 |
+| `npm test` | 536/536 | 856/856 |
 
 O número honesto para frase nunca vista é o **84%**. As 3 que continuam erradas estão marcadas como abertas no banco (`scripts/fixtures/banco-voz.mjs`): "bom então fica assim reunião…" (sobra "fica assim" no título), "pagar o cartão dia 10 e a internet dia 15" (o 2º item perde o "pagar") e "entregar a declaração do imposto de renda" (cai em Estudos por causa de "entregar").
 

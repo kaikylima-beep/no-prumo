@@ -71,7 +71,7 @@ Antes de instalar: Ajustes → Backup → Salvar. Instale por cima (os dados con
 
 ## Regras para a correção
 
-- Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3; 855 na 1.13.1).
+- Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3; 856 na 1.13.1).
 - **Banco de fala natural (1.13.1):** `scripts/fixtures/banco-voz.mjs`, 278 frases inventadas. Toda frase do tipo Regra que chegar do celular entra lá (com nomes trocados). Frase que ainda sai errada entra marcada `'aberta'`: conta no placar e não reprova o teste. O `npm test` exige placar de 95% ou mais.
 - Nomes de pessoas são trocados antes de entrar no `npm test` e neste arquivo.
 - Se uma frase depende de a palavra vir certa e ela vem errada (tipo Ouvido), o caminho é o dicionário pessoal ou a tela de correção, não o interpretador.
