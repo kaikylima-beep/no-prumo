@@ -429,7 +429,7 @@ function BatchContent({ batch, onClose }) {
                   <Text style={st.bMeta} numberOfLines={1}>
                     {date ? shortBR(date) : 'sem data'} ·{' '}
                     {transfer ? 'transferência entre suas contas' : r.category}
-                    {r.type === 'out' ? (r.essential ? ' · necessário' : ' · não necessário') : ''}
+                    {r.type === 'out' ? (r.category === 'Devolvido' ? ' · devolvido' : /^fatura\b/i.test(r.title || '') ? ' · fatura' : r.essential ? ' · necessário' : ' · não necessário') : ''}
                   </Text>
                   {r.hint ? <Text style={[st.bDup, { color: r.action === 'add' && transfer ? pal.main : tone.warn }]}>{r.hint}</Text> : null}
                   {!expanded ? <Text style={st.bEdit}>Toque para corrigir</Text> : null}

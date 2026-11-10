@@ -8,8 +8,8 @@ import { toISO, fromISO, parseMoney } from './utils';
 import { intervalTimes, firstOccurrence } from './recurrence';
 
 export const CATEGORIES = {
-  out: ['Cartão', 'Contas', 'Alimentação', 'Transporte', 'Saúde', 'Estudos', 'Lazer', 'Parcelas', 'Outros'],
-  in: ['Salário', 'Bônus', 'Extra', 'Investimentos', 'Outros'],
+  out: ['Cartão', 'Contas', 'Alimentação', 'Transporte', 'Saúde', 'Estudos', 'Lazer', 'Parcelas', 'Tarifas e juros', 'Devolvido', 'Outros'],
+  in: ['Salário', 'Bônus', 'Extra', 'Investimentos', 'Devolvido', 'Outros'],
 };
 
 // ---------- utilidades de texto ----------

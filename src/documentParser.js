@@ -7,6 +7,7 @@
 // Tudo roda no celular, sem internet. PDF escaneado (foto) não tem texto: o app avisa.
 import { inflate } from 'pako';
 import { fold, guessFinance } from './parser';
+import { REFUND, CHARGES, isCardBill, learnedCategory, refundChanges } from './financeFixes';
 
 // ---------- bytes → texto ----------
 
@@ -727,7 +728,7 @@ function addMonthIso(iso, n) {
 
 // prefixos de extrato que não ajudam a reconhecer o gasto
 const NOISE =
-  /\b(?:compra\s+(?:no\s+)?(?:cartao\s+)?(?:de\s+)?(?:debito|credito)?|compra\s+cartao|pagamento\s+(?:de\s+)?(?:boleto\s+)?|pagto\s+|pag\s+|boleto\s+|pay\s+|pix\s+qrs?\s+|pix\s+(?:enviado|recebido|transf\w*)(?:\s+para)?|transf\w*\s+(?:enviada|recebida|pix)?|ted\s+|doc\s+|deb\.?\s+aut\.?|debito\s+automatico|parc\w*\s+\d+\/\d+|\d{2}\/\d{2}\s*$)|\*+/g;
+  /\b(?:compra\s+(?:no\s+)?(?:cartao\s+)?(?:de\s+)?(?:debito|credito)?|compra\s+cartao|pagamento\s+(?:de\s+)?(?:boleto\s+)?|pagto\s+|pag\s+|boleto\s+|pay\s+|pix\s+qrs?\s+|rscss\s+|pix\s+(?:enviado|recebido|transf\w*)(?:\s+para)?|transf\w*\s+(?:enviada|recebida|pix)?|ted\s+|doc\s+|deb\.?\s+aut\.?|debito\s+automatico|parc\w*\s+\d+\/\d+|\d{2}\/\d{2}\s*$)|\*+/g;
 const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
 function niceTitle(desc) {
@@ -735,7 +736,9 @@ function niceTitle(desc) {
   const orig = String(desc || '')
     .replace(/\s+/g, ' ')
     .trim()
-    .replace(/\s*\d{2}\/\d{2}$/, '');
+    .replace(/\s*\d{2}\/\d{2}$/, '')
+    // 1.13: data sem barra grudada no fim ("TRANSP COLET0711")
+    .replace(/([A-Za-zÀ-ÿ])(?:0[1-9]|[12]\d|3[01])(?:0[1-9]|1[0-2])$/, '$1');
   const f = fold(orig);
   // fold troca letra por letra, então dá para cortar os mesmos trechos do original e manter os acentos
   let t = '';
@@ -765,9 +768,10 @@ const MERCHANTS = [
   [/\b(copel|cemig|enel|light|celesc|energisa|coelba|sabesp|sanepar|copasa|claro|vivo|tim|oi|net|edificio|condominio|aluguel)\b/, 'Contas'],
   [/\b(fatura\s+paga|pagamento\s+fatura)\b/, 'Cartão'],
   [/\b(carre\w*|merca\w*|atacad\w*|assai|supermerc\w*|padaria|ifood|restaurante)\b/, 'Alimentação'],
-  [/\b(uber|99app|99\s+pop|posto|combustivel)\b/, 'Transporte'],
+  [/\b(uber|99app|99\s+pop|posto|combustivel|transp\w*\s+colet\w*|onibus|metro|urbs)\b/, 'Transporte'],
   [/\b(farmacia|drogaria|droga\w*|raia)\b/, 'Saúde'],
-  [/\b(iof|juros|tarifa|anuidade)\b/, 'Contas'],
+  // 1.13: cobrança do banco é custo evitável, não conta necessária
+  [/\b(iof|juros|tarifa|anuidade|encargos?|multa)\b/, CHARGES],
 ];
 
 const IN_HINT = /\b(pix\s+recebido|recebid[oa]|salario|deposito|credito\s+em\s+conta|transf\w*\s+recebida|estorno|rendimento|reembolso|ted\s+recebida|proventos)\b/;
@@ -803,6 +807,14 @@ function makeItem({ date, desc, amount, typeHint }, today, ctx) {
       };
     }
     return null;
+  }
+  // 1.13: Pix devolvido ("DEV PIX Fulano") e rendimento da aplicação automática
+  if (type === 'out' && /^\s*dev(?:ol\w*)?\.?\s+(?:de\s+)?pix\b|\bdevolucao\s+(?:de\s+)?pix\b/.test(f)) {
+    const who = niceTitle(desc.replace(/^\s*dev\w*\.?\s+(?:de\s+)?pix\s*/i, ''));
+    return { title: who && who !== 'Compra no débito' ? `Pix devolvido para ${who}` : 'Pix devolvido', amount: Math.abs(amount), type, category: REFUND, essential: null, date: date || today, status: 'paid', source: desc, hint: 'Pix devolvido: ele e o Pix que voltou não contam como renda nem gasto' };
+  }
+  if (type === 'in' && /\brend\w*\s+pago\b|\brendimento|\baplic\w*\s+aut/.test(f)) {
+    return { title: 'Rendimento', amount: Math.abs(amount), type, category: 'Investimentos', date: date || today, status: (date || today) > today ? 'pending' : 'paid', source: desc };
   }
   let title = niceTitle(desc);
   const known = MERCHANTS.find(([re]) => re.test(fold(title))) || MERCHANTS.find(([re]) => re.test(f));
@@ -1107,10 +1119,27 @@ export function parseDocument({ name = '', mimeType = '', bytes }, today, existi
   const meta = { bank: null, agency: null, number: null, balance: null, balanceDate: null, ...(res.meta || {}) };
   if (!meta.bank) meta.bank = detectBank('', name);
   // marca o que já parece estar no app (mesmo dia, mesmo valor, mesmo tipo)
-  const items = res.items.map((it, k) => {
+  let items = res.items.map((it, k) => {
     const dup = existing.some((e) => sameDay(e, it));
-    return { ...it, key: `imp${k}`, duplicate: dup, selected: !dup };
+    const row = { ...it, key: `imp${k}`, duplicate: dup, selected: !dup };
+    // 1.13: o mesmo nome que você já classificou ganha a mesma categoria
+    if (row.type !== 'transfer' && row.category === 'Outros') {
+      const learned = learnedCategory(row.title, row.type, existing);
+      if (learned) Object.assign(row, learned);
+    }
+    // a fatura paga fica sem marca de necessário/não necessário
+    if (isCardBill(row)) row.essential = null;
+    return row;
   });
+  // 1.13: Pix devolvido e o Pix que voltou, os dois no mesmo arquivo, se anulam
+  const pairs = refundChanges(items.map((r) => ({ ...r, id: r.key })));
+  if (Object.keys(pairs).length) {
+    items = items.map((r) =>
+      pairs[r.key]
+        ? { ...r, category: REFUND, essential: null, hint: 'Pix devolvido: ele e a devolução não contam como renda nem gasto' }
+        : r
+    );
+  }
   return { kind: res.kind, items, meta };
 }
 

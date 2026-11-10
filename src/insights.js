@@ -3,7 +3,7 @@
 // subiu, para onde o saldo vai se continuar assim e de onde veio o saldo de hoje.
 // Tudo aqui é cálculo puro: não lê nem grava nada.
 import { daysInMonth, addMonthsYm, MONTHS } from './utils';
-import { isWorkIncome, monthBudget } from './budget';
+import { isWorkIncome, isExtraIncome, isRefund, monthBudget } from './budget';
 import { accountsSummary, effectOn, isCountable, SAVING_KINDS } from './accounts';
 
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -16,7 +16,8 @@ export const monthShort = (ym) => monthName(ym).slice(0, 3).toLowerCase();
 
 // 'salary' (salário e bônus) | 'extra' (Pix de alguém, reembolso, rendimento…) | 'own' (de outra conta sua) | null
 export function incomeKind(t, accounts = []) {
-  if (t.type === 'in') return isWorkIncome(t) ? 'salary' : 'extra';
+  if (isRefund(t)) return null; // 1.13: Pix devolvido não é recebimento
+  if (t.type === 'in') return isWorkIncome(t) ? 'salary' : isExtraIncome(t) ? 'extra' : null;
   if (t.type === 'transfer') {
     const to = accounts.find((a) => a.id === t.to);
     // pagamento de fatura (para o cartão) não é recebimento
@@ -54,7 +55,7 @@ const cardIds = (accounts) => new Set(accounts.filter((a) => a.kind === 'cartao'
 // cutoff = só os dias até este (para comparar "até o dia 7" com "até o dia 7")
 export function monthStats(finance, accounts, ym, cutoff = 31) {
   const cards = cardIds(accounts);
-  const items = finance.filter((t) => t.date && t.date.startsWith(ym) && dayOf(t.date) <= cutoff);
+  const items = finance.filter((t) => t.date && t.date.startsWith(ym) && dayOf(t.date) <= cutoff && !isRefund(t));
   const outs = items.filter((t) => t.type === 'out');
   const ins = items.filter((t) => t.type === 'in');
   const byCat = {};
@@ -64,7 +65,7 @@ export function monthStats(finance, accounts, ym, cutoff = 31) {
   return {
     ym,
     salary: sum(ins.filter(isWorkIncome)),
-    extras: sum(ins.filter((t) => !isWorkIncome(t))),
+    extras: sum(ins.filter(isExtraIncome)),
     spend: sum(outs),
     byCat,
     card,

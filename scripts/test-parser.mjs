@@ -21,7 +21,7 @@ writeFileSync(
 );
 writeFileSync(
   join(dir, 'budget.mjs'),
-  readFileSync(join(root, 'src/budget.js'), 'utf8').replace("from './utils'", "from './utils.mjs'")
+  readFileSync(join(root, 'src/budget.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './financeFixes'", "from './financeFixes.mjs'")
 );
 writeFileSync(
   join(dir, 'parser.mjs'),
@@ -29,10 +29,12 @@ writeFileSync(
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './recurrence'", "from './recurrence.mjs'")
 );
+writeFileSync(join(dir, 'financeFixes.mjs'), readFileSync(join(root, 'src/financeFixes.js'), 'utf8'));
 writeFileSync(
   join(dir, 'documentParser.mjs'),
   readFileSync(join(root, 'src/documentParser.js'), 'utf8')
     .replace("from './parser'", "from './parser.mjs'")
+    .replace("from './financeFixes'", "from './financeFixes.mjs'")
     .replace("from 'pako'", `from '${pathToFileURL(join(root, 'node_modules/pako/dist/pako.esm.mjs')).href}'`)
 );
 const DP = await import(pathToFileURL(join(dir, 'documentParser.mjs')).href);
@@ -1408,6 +1410,64 @@ export default {
   const sr = appj.expo.plugins.find((x) => Array.isArray(x) && x[0] === 'expo-speech-recognition');
   ok('o app enxerga os serviços de voz do Google', ['com.google.android.tts', 'com.google.android.as', 'com.google.android.googlequicksearchbox'].every((x) => sr[1].androidSpeechServicePackages.includes(x)), true);
   rmSync(d3, { recursive: true, force: true });
+}
+
+// ---- 1.13: Finanças mais limpo (dados inventados)
+{
+  const ok = (name, got, exp) => {
+    total++;
+    const same = JSON.stringify(got) === JSON.stringify(exp);
+    if (!same) { fails++; console.log(`FALHOU  1.13 finanças: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.13 finanças: ${name}`);
+  };
+  const d4 = mkdtempSync(join(tmpdir(), 'fin113-'));
+  writeFileSync(join(d4, 'ff.mjs'), readFileSync(join(root, 'src/financeFixes.js'), 'utf8'));
+  const FF = await import(pathToFileURL(join(d4, 'ff.mjs')).href);
+  rmSync(d4, { recursive: true, force: true });
+  ok('título sem data grudada e sem código do banco', ['Rscss Transp Colet0711', 'Rscss Cidadao do M0610', 'Mercado Bom Preço', 'Pix de Caio23/09'].map(FF.cleanImportTitle), ['Transp Colet', 'Cidadao do M', 'Mercado Bom Preço', 'Pix de Caio']);
+  const fin = [
+    { id: 'a', type: 'in', title: 'Pix de Caio Au', amount: 75, date: '2026-10-12', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'b', type: 'out', title: 'Dev Pix Caio August', amount: 75, date: '2026-10-13', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'c', type: 'in', title: 'Pix de Bia', amount: 75, date: '2026-10-01', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'd', type: 'in', title: 'Rend Pago Aplic Aut Mais', amount: 0.5, date: '2026-10-06', category: 'Outros', importId: 'i' },
+    { id: 'e', type: 'out', title: 'Juros Limite da Conta', amount: 2, date: '2026-11-03', category: 'Contas', essential: true, importId: 'i' },
+    { id: 'f', type: 'out', title: 'Fatura do cartão', amount: 400, date: '2026-11-06', category: 'Cartão', essential: false, importId: 'i' },
+    { id: 'g', type: 'out', title: 'Rscss Transp Colet0711', amount: 6, date: '2026-11-07', category: 'Outros', importId: 'i' },
+    { id: 'h', type: 'out', title: 'Mercado', amount: 50, date: '2026-11-07', category: 'Alimentação' }, // à mão: não muda
+  ];
+  const ch = FF.migrate113(fin);
+  ok('Pix devolvido: a devolução liga ao Pix que voltou (o mais perto)', [ch.a, ch.b], [{ category: 'Devolvido', refundPair: 'b' }, { category: 'Devolvido', essential: null, title: 'Pix devolvido para Caio August', refundPair: 'a' }]);
+  ok('outro Pix de mesmo valor, mais antigo, fica como está', ch.c, undefined);
+  ok('rendimento vira Investimentos', ch.d, { category: 'Investimentos', title: 'Rendimento' });
+  ok('juros viram "Tarifas e juros", sem marca de necessário', ch.e, { category: 'Tarifas e juros', essential: null });
+  ok('fatura paga fica sem marca', ch.f, { essential: null });
+  ok('transporte coletivo vira Transporte com nome limpo', ch.g, { title: 'Transp Colet', category: 'Transporte', essential: null });
+  ok('lançamento feito à mão não é tocado', ch.h, undefined);
+  const after = fin.map((t) => (ch[t.id] ? { ...t, ...ch[t.id] } : t));
+  ok('segunda passada não muda mais nada', FF.refundChanges(after), {});
+  // orçamento e recebimentos
+  const ym = '2026-10';
+  const m = B.monthBudget(after.concat([{ id: 's', type: 'in', category: 'Salário', title: 'Salário', amount: 2000, date: '2026-10-05' }]), { target: 0 }, ym, new Date(2026, 9, 31));
+  ok('Pix devolvido e rendimento não são extras; o outro Pix é', m.extraIncome, 75);
+  ok('Pix devolvido não é gasto', m.essential + m.nonEssential, 0);
+  const nov = B.monthBudget(after, { salary: 2000 }, '2026-11', new Date(2026, 10, 30));
+  ok('fatura aparece à parte (a conta não muda)', [nov.cardBill, nov.nonEssential >= nov.cardBill], [400, true]);
+  ok('recebimentos: devolvido e rendimento ficam fora', [IN.incomeKind(after[0]), IN.incomeKind(after[3]), IN.incomeKind(after[2])], [null, null, 'extra']);
+  // categoria aprendida
+  ok('o mesmo nome que você já classificou ganha a mesma categoria (mesmo com o código do banco)', FF.learnedCategory('PAY KENNE 23/10', 'out', [{ type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, createdAt: 1 }]), { category: 'Alimentação', essential: true });
+  ok('nome genérico não aprende', FF.learnedCategory('Compra no débito', 'out', [{ type: 'out', title: 'Compra no débito', category: 'Lazer', createdAt: 1 }]), null);
+  ok('categoria aprendida pelo nome limpo', FF.learnedCategory('Kenne', 'out', [{ type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, createdAt: 1 }]), { category: 'Alimentação', essential: true });
+  // importação de um CSV inventado
+  const csv = ['Data;Descrição;Valor', '12/10/2026;PIX TRANSF CAIO AU12/10;75,00', '13/10/2026;DEV PIX Caio August12/10;-75,00', '06/10/2026;REND PAGO APLIC AUT MAIS;0,50', '03/11/2026;JUROS LIMITE DA CONTA;-2,00', '07/11/2026;RSCSS TRANSP COLET0711;-6,13', '07/11/2026;PAY KENNE 07/11;-32,70'].join('\n');
+  const imp = DP.parseDocument({ name: 'extrato.csv', mimeType: 'text/csv', bytes: new TextEncoder().encode(csv) }, '2026-11-08', [{ id: 'k', type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, date: '2026-10-23', amount: 11 }]);
+  const pick = (re) => imp.items.find((r) => re.test(r.title || '')) || {};
+  ok('importação: Pix devolvido e o Pix que voltou chegam como Devolvido', [pick(/^Pix devolvido/).category, pick(/^Pix de Caio/).category], ['Devolvido', 'Devolvido']);
+  ok('importação: rendimento', [pick(/^Rendimento/).category], ['Investimentos']);
+  ok('importação: juros em "Tarifas e juros"', pick(/^Juros/).category, 'Tarifas e juros');
+  ok('importação: transporte coletivo com nome limpo', [pick(/Transp/).title, pick(/Transp/).category], ['Transp Colet', 'Transporte']);
+  ok('importação: compra numa loja que você já classificou', [pick(/^Kenne/).category], ['Alimentação']);
+  const fs1 = readFileSync(join(root, 'src/screens/FinanceScreen.js'), 'utf8');
+  ok('topo do Avançado: "Mudança no saldo" saiu da tela', /sumLabel\}>Mudança no saldo/.test(fs1), false);
+  ok('topo do Avançado: "Previsto" não repete o "Ainda pode gastar" cortado', /!\(hasBudget && !bud\.noSalary && bud\.capped\)/.test(fs1), true);
 }
 
 console.log(`\n${total - fails}/${total} passaram`);

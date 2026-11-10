@@ -9,6 +9,7 @@ import { AREAS, AREA_PAL, colors, look } from './theme';
 import { restartApp, SETTINGS_KEY } from './Root';
 import { onExternalChange } from './actions';
 import { currentSlot, slotKey, slotLabel } from './recurrence';
+import { migrate113, refundChanges } from './financeFixes';
 
 const Ctx = createContext(null);
 export const useData = () => useContext(Ctx);
@@ -370,6 +371,17 @@ export function DataProvider({ children }) {
       );
     }
   }, [l3]);
+
+  // ---------- 1.13: Finanças mais limpo ----------
+  // Uma vez: limpa títulos e categorias do que já foi importado. Sempre: liga cada Pix devolvido
+  // ao Pix que voltou (os dois saem de renda e gasto).
+  useEffect(() => {
+    if (!loaded) return;
+    const first = !settingsRaw.fin113;
+    const changes = first ? migrate113(finance) : refundChanges(finance);
+    if (Object.keys(changes).length) setFinance((prev) => prev.map((t) => (changes[t.id] ? { ...t, ...changes[t.id] } : t)));
+    if (first) setSettings((prev) => ({ ...prev, fin113: true }));
+  }, [loaded, finance]);
 
   // ---------- frases não entendidas ----------
 
