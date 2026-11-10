@@ -35,6 +35,36 @@ Ritmo: uma versão por semana, com 3 dias de uso no celular antes da próxima. A
 | 11/01 – 31/01 | **Antes de divulgar** | Teste com colegas, Xiaomi/Samsung, passo a passo do APK, 3 dias rodando bem |
 | fev/2027 | **Divulgação** | Recepção de calouros da UTFPR |
 
+## Próximas entregas: escopo fechado em 10/11
+
+### 1.12.4 · Finanças mais limpo (correção, semana de 10/11)
+Erros claros (entram):
+1. Devolução de Pix ("DEV PIX") anula o Pix que voltou: não infla "Entrou" nem "Saiu".
+2. Títulos da importação: tirar data grudada ("…0711"), códigos do banco ("RSCSS", "PAY") e número solto ("Pix enviado 5725…").
+3. Primeira tela de Finanças no Avançado com menos números repetidos (hoje: Sobra, Previsto e Ainda pode gastar quase iguais). Nenhuma função sai; o que sai do topo continua em "Seu mês" e em "Tudo do mês".
+4. Campo Testes: frases que o Kaiky mandar até lá.
+Mudam regra (só com o "sim" do Kaiky):
+5. Rendimento da aplicação vira Investimentos (não é extra).
+6. Compras no débito ganham categoria pelo nome da loja (mercado, farmácia, transporte…).
+7. Juros do limite e IOF viram "Tarifas e juros", não necessários.
+8. Fatura do cartão sem marca de necessário/não necessário.
+
+### 1.13 · Notas e faltas (semana de 16/11)
+Notas:
+- Em cada matéria, a lista de avaliações: nome (P1, P2, trabalho, lista…), data, nota tirada e nota máxima (padrão 10).
+- Campo livre "Como o professor calcula", para copiar a fórmula do caderno. O app não impõe fórmula.
+- Peso por avaliação, opcional. Com os pesos, o app mostra a média e quanto falta para passar (média para passar editável).
+- Depois da data de uma prova já cadastrada, o app pergunta "Já saiu a nota?" (opcional).
+- Voz: "tirei 7,5 na P1 de cálculo", "tirei 8 no trabalho de física".
+Faltas:
+- Em cada matéria: faltas, total de aulas do semestre (pelos horários da matéria, do início ao fim do semestre, sem feriados) e o limite (25% das aulas, editável).
+- Marcar falta com um toque na matéria, com Desfazer.
+- Voz: "faltei na aula de física", "faltei hoje" (todas as aulas do dia).
+- Aviso opcional depois de cada aula: "Foi na aula de Cálculo 2?" com Fui / Faltei, direto no aviso.
+- Avisos: perto do limite ("pode faltar mais 2") e passou do limite.
+Nos dois visuais: Simples com lista calma ("Faltas 3 de 16 · Média 7,2"); Avançado no cartão da matéria, com a cor dela.
+Também: backup leva notas e faltas; campo Testes; testes automáticos de média, limite e voz.
+
 ## Fila (detalhe de cada versão)
 1. **1.12.3** · em teste no celular.
 2. **1.13 · Notas e faltas** (decidido em 09/11):
