@@ -515,6 +515,8 @@ function mMoney(t, i) {
   }
   const num = readNum(t, j);
   if (!num) return null;
+  // "18,90" já é dinheiro, mesmo sem dizer "reais"
+  if (num.len === 1 && /,\d{2}$/.test(t[j].n) && !MONEY_WORD.has((t[j + 1] || {}).n)) return { kind: 'money', len: 1, amount: num.val };
   j += num.len;
   let amount = num.val;
   // "60 e 50 reais" = 60,50
@@ -591,7 +593,7 @@ export function tag(t, now, protect = []) {
 // ───────────────────────── 3. pedaços ─────────────────────────
 
 const NOT_VERB = new Set(['celular', 'lugar', 'mulher', 'lar', 'bar', 'mar', 'ar', 'par', 'familiar', 'particular', 'popular', 'dolar', 'lazer', 'prazer', 'colher', 'qualquer', 'talher', 'ser', 'militar', 'escolar', 'jantar', 'almocar', 'vestibular', 'exemplar', 'auxiliar', 'titular', 'polegar', 'hangar', 'radar', 'bazar', 'cesar', 'guilhermer', 'walter', 'peter', 'junior', 'quer', 'souber', 'tiver', 'der', 'puder', 'chofer', 'suporter', 'poster', 'master', 'folder', 'cheddar', 'acucar', 'colar', 'solar', 'luar', 'pomar', 'altar', 'andar', 'hamburguer', 'notebook', 'elixir', 'emir', 'faquir', 'vizir', 'souvenir', 'computer', 'uber', 'cooler', 'trailer', 'lider', 'poder', 'dever', 'haver', 'ter', 'mister', 'cancer', 'carater', 'eter', 'cadaver', 'revolver', 'reporter', 'esfincter', 'nectar', 'ambar', 'joker', 'poker', 'sair', 'ir']);
-const MEAL_VERB = new Set(['jantar', 'almocar', 'sair', 'ir']);
+const MEAL_VERB = new Set(['jantar', 'almocar', 'sair', 'ir', 'ler', 'ver', 'dar']);
 const PAST_MONEY = new Set(['paguei', 'gastei', 'comprei', 'recebi', 'ganhei', 'mandei', 'enviei', 'transferi', 'depositei', 'fiz', 'torrei', 'pagamos', 'emprestei', 'devolvi', 'vendi', 'saquei']);
 const PAST_OTHER = new Set(['tirei', 'faltei']);
 const BINDERS = new Set(['para', 'pra', 'de', 'a', 'vou', 'vai', 'vamos', 'preciso', 'precisa', 'precisamos', 'tenho', 'tem', 'temos', 'que', 'quero', 'queria', 'devo', 'deve', 'posso', 'pode', 'nao', 'sem', 'ate', 'ao', 'tentar', 'comecar', 'terminar', 'ir', 'ja', 'e', 'ou', 'eu', 'pro', 'do', 'da', 'no', 'na', 'o', 'um', 'uma', 'meu', 'minha', 'conseguir', 'esquecer', 'lembrar', 'antes', 'depois', 'como', 'onde', 'se', 'so', 'tambem', 'ainda', 'vir', 'voltar', 'deixar', 'mandar', 'fazer']);
@@ -609,7 +611,13 @@ function split(t, spans) {
     for (let k = sp.s; k < sp.e; k++) inSpan[k] = sp;
   });
   const free = (k) => t[k] && !inSpan[k] && t[k].kind !== 'p';
-  const hasMoneyBetween = (a, b) => spans.some((sp) => sp.kind === 'money' && sp.s >= a && sp.e <= b);
+  const endsWithNum = (a, b) => {
+    let k = b - 1;
+    while (k > a && (inSpan[k] || t[k].kind === 'p')) k--;
+    return k > a && t[k].kind === 'num' && !inSpan[k];
+  };
+  const anyNum = (a, b) => t.slice(a, b).some((w, k) => w.kind === 'num' && !inSpan[a + k]);
+  const hasMoneyBetween = (a, b) => spans.some((sp) => sp.kind === 'money' && sp.s >= a && sp.e <= b) || endsWithNum(a, b);
   const nextBoundary = (k) => {
     let j = k;
     while (j < t.length && !(t[j].kind === 'p' && !inSpan[j]) && !(free(j) && t[j].n === 'e')) j++;
@@ -641,7 +649,7 @@ function split(t, spans) {
       while (free(k) && CONNECTOR.has(t[k].n)) k++;
       const nx = t[k];
       const standalone = nx && !inSpan[k] && (isAction(nx) || INTENT_NOUN.has(nx.n));
-      const moneyList = hasMoneyBetween(start, i) && hasMoneyBetween(i + 1, nextBoundary(i + 1));
+      const moneyList = (hasMoneyBetween(start, i) || anyNum(start, i)) && hasMoneyBetween(i + 1, nextBoundary(i + 1));
       if ((standalone && head) || moneyList) cut(i, i + 1);
       continue;
     }
@@ -652,7 +660,7 @@ function split(t, spans) {
       while (free(a) && SKIP_AFTER_E.has(t[a].n)) a++;
       const nx = t[a];
       const standalone = nx && !inSpan[a] && (isAction(nx) || INTENT_NOUN.has(nx.n) || (a > k && MUST.has(t[a - 1].n)) || MUST.has(nx.n));
-      const moneyList = hasMoneyBetween(start, i) && hasMoneyBetween(i + 1, nextBoundary(i + 1));
+      const moneyList = (hasMoneyBetween(start, i) || anyNum(start, i)) && hasMoneyBetween(i + 1, nextBoundary(i + 1));
       if (head && (standalone || moneyList)) {
         cut(i, k);
         i = k - 1;
@@ -787,6 +795,7 @@ function buildItem(t, seg, spans, ctx) {
   mine.forEach((sp) => {
     if (sp.kind === 'date' && !item.date) {
       item.date = sp.date;
+      item.dated = true;
       item._dom = sp.dom || null;
       item._weekday = !!sp.weekday;
       if (sp.days && sp.days.length > 1) item._days = sp.days;
@@ -1132,7 +1141,7 @@ export function parse(text, ctx = {}) {
     const last = merged[merged.length - 1].item;
     if (last.type === 'money' && (last.repeat || last.date)) {
       merged.slice(0, -1).forEach((b) => {
-        if (b.item.type !== 'money' || b.item.repeat || (b.item.date && !b.item.paid)) return;
+        if (b.item.type !== 'money' || b.item.repeat || b.item.dated) return;
         if (b.item.paid && !last.paid && !b.words.some((n) => PAST_MONEY.has(n))) b.item.paid = false;
         if (b.item.paid) return;
         b.item.date = last.date;

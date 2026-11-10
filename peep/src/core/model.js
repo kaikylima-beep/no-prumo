@@ -81,6 +81,17 @@ export function nextDate(repeat, date, after) {
   }
   return null;
 }
+export function occursOn(repeat, date, iso) {
+  if (!repeat || iso <= date) return false;
+  const step = Math.max(1, repeat.interval || 1);
+  if (repeat.freq === 'daily') return diffDays(date, iso) % step === 0;
+  if (repeat.freq === 'weekly') return (repeat.days && repeat.days.length ? repeat.days : [weekdayOf(date)]).includes(weekdayOf(iso)) && Math.floor(diffDays(startOfWeek(date), iso) / 7) % step === 0;
+  if (repeat.freq === 'monthly') {
+    const d = fromISO(iso);
+    return d.getDate() === Math.min(repeat.day || fromISO(date).getDate(), daysInMonth(d.getFullYear(), d.getMonth()));
+  }
+  return false;
+}
 const startOfWeek = (iso) => addDays(iso, -weekdayOf(iso));
 
 // Marca como feito. Devolve a lista nova de itens.
@@ -159,6 +170,13 @@ export function dayAgenda(state, iso, now = new Date()) {
   const loose = [];
   const done = [];
   state.items.forEach((it) => {
+    // item que se repete aparece também nos próximos dias em que vai cair
+    if (it.repeat && !it.done && it.date && it.date < iso && iso > today && occursOn(it.repeat, it.date, iso)) {
+      const ghost = { ...it, date: iso, ghost: true };
+      if (it.time) timed.push({ kind: 'item', id: `${it.id}@${iso}`, item: ghost, time: it.time, end: it.endTime });
+      else loose.push(ghost);
+      return;
+    }
     if (it.date !== iso) return;
     if (it.done) return done.push(it);
     if (it.time) timed.push({ kind: 'item', id: it.id, item: it, time: it.time, end: it.endTime });

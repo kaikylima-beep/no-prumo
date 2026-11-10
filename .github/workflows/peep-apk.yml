@@ -1,0 +1,69 @@
+# Peep (app alternativo, pasta peep/): testes e APK de teste.
+# Roda quando a pasta peep/ muda num ramo de trabalho, ou pelo "Run workflow".
+# Não mexe no Prumo nem cria Release.
+name: Peep APK
+
+on:
+  push:
+    branches: ['ccr-**', 'claude/**', 'peep**']
+    paths: ['peep/**', '.github/workflows/peep-apk.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: peep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Testes e APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: peep
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: peep/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Gerar a pasta android (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+        env:
+          CI: 1
+          EXPO_NO_TELEMETRY: 1
+      - name: Chave de teste e memória do Gradle
+        run: |
+          cp ../keystore/debug.keystore android/app/debug.keystore
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+      - name: Gerar o APK (assembleRelease)
+        working-directory: peep/android
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          NODE_ENV: production
+      - name: Conferir o APK
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          B="$("$BT/aapt2" dump badging "$APK")"
+          V="$(node -p "require('./app.json').expo.version")"
+          echo "$B" | grep -q "package: name='com.peep.app'" || { echo "pacote errado"; exit 1; }
+          echo "$B" | grep -q "versionName='$V'" || { echo "versão errada"; exit 1; }
+          echo "$B" | grep -q "application-label:'Peep'" || { echo "nome errado"; exit 1; }
+          "$BT/apksigner" verify "$APK"
+          cp "$APK" "Peep-$V.apk"
+          echo "V=$V" >> "$GITHUB_ENV"
+          echo "Peep $V · $(du -h "$APK" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Peep-${{ env.V }}
+          path: peep/Peep-${{ env.V }}.apk
+          retention-days: 30
