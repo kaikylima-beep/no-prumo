@@ -77,7 +77,9 @@ Também: backup leva notas e faltas; campo Testes; testes automáticos de média
 6. **1.17 · Backup na nuvem:** salva sozinho numa pasta do Drive, guarda 7 cópias, avisa se falhar.
 7. **Antes de divulgar:** "Experimente falar" em Finanças e Estudos; teste com 2 colegas sem explicar; transição suave entre abas; passo a passo para instalar o APK; nome e marca (INPI); voz "no celular" nos aparelhos dos colegas; avisos em Xiaomi e Samsung; 3 dias rodando bem.
 
-Sem data, quando couber entre versões (correção x.y.Z): simplificar a primeira tela de Finanças (menos números repetidos, sem tirar função) e o microfone respondendo perguntas (candidato a versão própria depois da 1.17).
+Sem data, quando couber entre versões (correção x.y.Z): simplificar a primeira tela de Finanças (menos números repetidos, sem tirar função).
+
+**Depois da 1.17 (decidido pelo Kaiky em 10/11):** versão própria para o microfone responder perguntas, com 3 perguntas no começo: "o que eu tenho amanhã?", "quanto gastei com [loja] este mês?" e "quando é a prova de [matéria]?". Respostas só com os dados do celular, sem internet.
 
 ## Depois (sem data)
 - Estudos: cadastrar várias matérias falando em sequência; feriados municipais automáticos; conferir a tabela de feriados todo ano.
