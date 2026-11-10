@@ -11,7 +11,8 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 | Decisões, regras de negócio, estado do app | `docs/memoria/memoria.md` (fonte da verdade) |
 | Calendário das próximas versões | `docs/memoria/plano.md` |
 | Frases que o app entendeu errado (campo Testes) | `docs/memoria/testes.md` |
-| Plano da voz | `docs/memoria/voz.md` |
+| Plano da voz (pesquisa, diagnóstico, placar) | `docs/memoria/voz.md` |
+| Banco de frases de fala natural (placar no `npm test`) | `scripts/fixtures/banco-voz.mjs` |
 | Cores, telas, ícone | `docs/memoria/marca.md` |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
@@ -35,6 +36,7 @@ A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude
 - Todas as abas ficam montadas (`display: 'none'`); `Modal` dentro de tela cobre o app inteiro; o Toast fica **atrás** de `Modal`.
 - Módulo novo testado precisa ser copiado para a pasta temporária em `scripts/test-parser.mjs`.
 - `android/` não vai para o git: é gerada pelo `expo prebuild`. Mudança nativa vai em `app.json` ou em `plugins/`.
+- Voz: a ordem é `speech.js` (ouvir) → `voice.js` (versões) → `normalize.js` (arrumar a fala) → `parser.js` (entender). Frase que saiu errada entra primeiro no banco (`scripts/fixtures/banco-voz.mjs`), depois se corrige a regra geral.
 - Voz: nada de regra para uma palavra mal ouvida específica. Erro de ouvido = dicionário pessoal/vocabulário; erro de regra = regra geral de português, testada em várias frases.
 - Expo muda a cada SDK: antes de mexer numa API do Expo, confira a doc da versão 58 (`https://docs.expo.dev/versions/v58.0.0/`). Instalar pacote com `npx expo install`.
 
@@ -87,7 +89,7 @@ Linha de produção (como uma empresa): `/versao <pedido>` → Desenvolvimento �
 
 ```
 npm ci            # instalar
-npm test          # 445+ testes, todos têm que passar
+npm test          # 855+ testes, todos têm que passar (inclui o placar da fala natural, mínimo 95%)
 ```
 
 Conferência no navegador (só quando a tarefa mexe em tela):

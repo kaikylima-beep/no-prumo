@@ -13,6 +13,22 @@ Criado em 09/11/2026, a pedido do Kaiky: enquanto o app está em fase de testes,
 4. **Na próxima versão:** cada frase do tipo Regra vira teste automático no `npm test` (com nomes trocados), e a regra geral é corrigida.
 5. **Fechamento:** a frase sai da lista de abertas quando passa no celular.
 
+## Testar no celular · 1.13.1 (voz: fala natural)
+Instale por cima da 1.13.0 (os dados continuam). Deixe o **modo de teste ligado**. Fale do seu jeito, sem caprichar.
+
+- [ ] Ajustes, no fim: aparece "No Prumo 1.13.1".
+- [ ] Hora falada: "reunião às três e meia da tarde" e "ligar pra mãe quinze para as oito da noite".
+- [ ] Data: "dentista mês que vem", "entregar o relatório no fim do mês", "faxina no fim de semana".
+- [ ] Outro dia sem dizer manhã ou tarde: "reunião quinta às 3" tem que dar 15:00.
+- [ ] Vícios de fala: "é então eu preciso tipo lavar o carro amanhã né" → "Lavar o carro", amanhã.
+- [ ] Correção na hora: "lavar o carro amanhã não sexta" → sexta.
+- [ ] Vários de uma vez, **sem pausa**: "amanhã tem reunião às 9 dentista às 14 e academia às 18" → 3 itens amanhã.
+- [ ] Vários de uma vez, **com pausa** entre eles: "lavar o carro (pausa) comprar pão amanhã" → 2 itens. Olhe se aparece vírgula no "Ouvi isso".
+- [ ] Gastos em sequência: "gastei 30 no almoço 15 no uber e 8 no café" → 3 gastos.
+- [ ] "remédio 3 vezes ao dia" → lembrete que repete, não gasto.
+- [ ] "o [nome] me deve 50 reais" → entrada, a receber.
+- [ ] Depois de 3 dias: Ajustes → Modo de teste → "Mandar as frases" (agora vai junto a confiança e o tempo das palavras; é isso que mostra se as pausas funcionam no S25).
+
 ## Testar no celular · 1.13.0
 Antes de instalar: Ajustes → Backup → Salvar. Instale por cima (os dados continuam).
 
@@ -55,6 +71,7 @@ Antes de instalar: Ajustes → Backup → Salvar. Instale por cima (os dados con
 
 ## Regras para a correção
 
-- Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3).
+- Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3; 855 na 1.13.1).
+- **Banco de fala natural (1.13.1):** `scripts/fixtures/banco-voz.mjs`, 278 frases inventadas. Toda frase do tipo Regra que chegar do celular entra lá (com nomes trocados). Frase que ainda sai errada entra marcada `'aberta'`: conta no placar e não reprova o teste. O `npm test` exige placar de 95% ou mais.
 - Nomes de pessoas são trocados antes de entrar no `npm test` e neste arquivo.
 - Se uma frase depende de a palavra vir certa e ela vem errada (tipo Ouvido), o caminho é o dicionário pessoal ou a tela de correção, não o interpretador.

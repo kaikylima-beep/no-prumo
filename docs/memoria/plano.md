@@ -27,6 +27,7 @@ Ritmo: uma versão por semana, com 3 dias de uso no celular antes da próxima. A
 |---|---|---|
 | 09/11 – 15/11 | **1.12.3** | Correções + campo Testes · na `main` (Release v1.12.3) |
 | 10/11 – 22/11 | **1.13.0** | Notas e faltas + Finanças mais limpo (a 1.12.4 entrou junto) · **em teste no celular** |
+| 10/11 – 22/11 | **1.13.1** | Voz: fala natural (pedido do Kaiky em 10/11: reforçar o carro-chefe) · no ramo `claude/voice-recognition-analysis-pzquu2`, **APK de teste; vai para a `main` só com o sim do Kaiky** |
 | 23/11 – 29/11 | **1.14** | Meus horários fixos (+ troca da chave de assinatura) |
 | 30/11 – 13/12 | **1.15** | Seu dia (tela Hoje) · 2 semanas, é a maior |
 | 14/12 – 20/12 | **1.16** | Revisões automáticas |

@@ -2,7 +2,24 @@
 
 App Android pessoal com três áreas (Tarefas, Finanças e Estudos), uma Agenda e um botão de microfone que organiza o que você fala. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.13.0**
+Versão atual: **1.13.1** (em teste)
+
+## Novidades da 1.13.1 · Voz: fala natural
+
+O app passou a entender a fala do jeito que ela sai, não só a frase arrumadinha. Nada foi feito para uma frase específica: são etapas novas, as mesmas que os assistentes de voz usam (detalhe em `docs/memoria/voz.md`).
+
+- **Horas faladas:** "três e meia da tarde", "quinze para as oito", "meio-dia e meia", "à uma da tarde", "amanhã 8 horas". Antes, "reunião às três e meia" virava um gasto de R$ 3.
+- **Datas:** "mês que vem", "dia primeiro", "fim do mês", "fim de semana", "quarta da semana que vem", "daqui a um mês", "de 20 a 27 de dezembro", "no Natal".
+- **"Reunião quinta às 3" é às 15h.** Hora de 1 a 6, sem "da manhã", em outro dia, fica à tarde. "Acordar às 5 amanhã" continua de manhã.
+- **Vícios de fala saem:** "é então eu preciso tipo lavar o carro né" vira "Lavar o carro". Também "anota aí…", "cria um lembrete pra…", "não posso esquecer de…".
+- **Correção dita na hora:** "amanhã não, sexta", "às 3, quer dizer, às 4", "50, ou melhor, 60".
+- **Vários pedidos numa fala só:** "amanhã tem reunião às 9 dentista às 14 e academia às 18" vira 3 itens, todos amanhã. "Gastei 30 no almoço 15 no uber e 8 no café" vira 3 gastos.
+- **Número não é dinheiro à toa:** "remédio 3 vezes ao dia" é lembrete de 8 em 8 horas; "ler 30 páginas" é tarefa; "recebi 2 mil" é R$ 2.000.
+- **Quem deve a quem:** "o Pedro me pagou 50" é entrada; "o Pedro me deve 50" é a receber; "devo 80 pra Marina" é a pagar.
+- **As 5 versões que o celular ouve são misturadas** palavra por palavra: a palavra certa de uma versão entra na outra. A 1ª versão só perde com prova (valor, dia, hora ou palavra que você costuma usar).
+- **A pausa conta:** quando você para entre um pedido e outro, o app põe uma vírgula ali e separa melhor. "Amanhã, lavar o carro" não perde mais o dia.
+- **Medição:** banco de 278 frases de fala natural no `npm test`. A versão anterior acertava 46%; esta acerta 99% (84% em frases que o código nunca tinha visto).
+- **Modo de teste:** "Mandar as frases" leva também a confiança do Android e o tempo de cada palavra.
 
 ## Novidades da 1.13.0 · Notas e faltas
 

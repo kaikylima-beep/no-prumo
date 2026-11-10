@@ -29,7 +29,7 @@ try {
   FS = null;
 }
 
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.13.1';
 
 function SwitchRow({ label, value, onChange }) {
   return (
@@ -157,6 +157,10 @@ function Content({ onClose, onPreview }) {
       if (others.length) parts.push(`   outras versões: ${others.map((a) => `"${a}"`).join(' | ')}`);
       if (m.parsed && m.parsed.length) parts.push(`   o app entendeu: ${m.parsed.join(' | ')}`);
       if (m.fixed && m.fixed.length) parts.push(`   você salvou: ${m.fixed.join(' | ')}`);
+      // 1.13.1: o que o Android informou sobre a escuta (serve para afinar as pausas e a escolha da versão)
+      const conf = (m.conf || []).filter((c) => typeof c === 'number' && c > 0);
+      if (conf.length) parts.push(`   confiança do Android: ${conf.map((c) => c.toFixed(2).replace('.', ',')).join(' | ')}`);
+      if (m.timing && m.timing.length) parts.push(`   tempo das palavras: ${m.timing.map(([w, ms]) => `${w} ${(ms / 1000).toFixed(1).replace('.', ',')}`).join(' · ')}`);
       if (m.audio) parts.push('   (áudio guardado no celular)');
       return parts.join('\n');
     });

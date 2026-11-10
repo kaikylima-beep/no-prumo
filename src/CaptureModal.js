@@ -7,6 +7,7 @@ import { useData } from './store';
 import { useUI } from './uiContext';
 import { useSpeech } from './speech';
 import { parseInput, parseSegment, addDays, splitSegments } from './parser';
+import { cleanSpeech } from './normalize';
 import { parseAcademic, isAcademicStart, parseGrade, fmtGrade } from './academic';
 import { todayISO, formatBR, shortBR } from './utils';
 import { enrichParsed, findSubject, occupationName, placeQuestion } from './subjects';
@@ -114,7 +115,8 @@ function Content({ onClose, accent = colors.ink }) {
     // 1.13: "tirei 7,5 na P1 de cálculo" e "faltei na aula de física" saem antes do interpretador geral
     let rest = t;
     const acad = [];
-    const segs = splitSegments(t);
+    // sem os vícios de fala, para "então tirei 7 na P1" também ser nota
+    const segs = splitSegments(cleanSpeech(t));
     if (segs.some(isAcademicStart)) {
       const others = [];
       for (const sg of segs) {
@@ -137,10 +139,12 @@ function Content({ onClose, accent = colors.ink }) {
   const describe = (i) => (ACAD.has(i.kind) ? acadSummary(i, subjects) : summarize(i));
 
   // terminou de ouvir: aplica o dicionário pessoal em cada versão e fica com a que o app entende melhor
-  const onHeard = (alts, audio) => {
+  // 1.13.1: onde as versões discordam, entra o trecho que o app entende melhor (best.text pode misturar duas versões)
+  const onHeard = (alts, audio, info = {}) => {
     const fixed = alts.map((a) => applyLearned(a, learned));
-    const best = pickBest(fixed.map((f) => f.text), todayISO(), new Date(), vocabRef.current);
+    const best = pickBest(fixed.map((f) => f.text), todayISO(), new Date(), vocabRef.current, info.conf || []);
     const chosen = fixed[best.index] || fixed[0];
+    const picked = best.text || chosen.text;
     setHeard({
       original: alts[0],
       raw: alts[best.index] || alts[0],
@@ -148,13 +152,24 @@ function Content({ onClose, accent = colors.ink }) {
       applied: chosen.applied,
       suggestions: chosen.suggestions,
       audio,
+      conf: info.conf || [],
+      timing: info.timing || [],
     });
     setFixing(null);
     setSavedPhrase(null);
     setCorrected(false);
-    setText(chosen.text);
-    analyze(chosen.text);
+    setText(picked);
+    analyze(picked);
   };
+
+  // o que o modo de teste guarda junto da frase: versões, confiança e instante das palavras
+  const heardExtra = () => ({
+    heard: heard ? heard.original : null,
+    alts: heard ? heard.alts : [],
+    audio: heard ? keepAudio(heard.audio) : null,
+    conf: heard ? heard.conf : [],
+    timing: heard ? heard.timing : [],
+  });
 
   const levelRef = useRef(null);
   const speech = useSpeech({
@@ -236,11 +251,7 @@ function Content({ onClose, accent = colors.ink }) {
   // aviso na própria tela: o Toast fica atrás deste Modal
   const saveMisheard = () => {
     if (savedPhrase) return;
-    const id = addMisheard(text, items ? items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${describe(i)})`) : [], {
-      heard: heard ? heard.original : null,
-      alts: heard ? heard.alts : [],
-      audio: heard ? keepAudio(heard.audio) : null,
-    });
+    const id = addMisheard(text, items ? items.map((i) => `${AREA_LABEL[i.kind]}: ${i.title} (${describe(i)})`) : [], heardExtra());
     setSavedPhrase(id);
   };
 
@@ -300,7 +311,7 @@ function Content({ onClose, accent = colors.ink }) {
     if (savedPhrase) updateMisheard(savedPhrase, { fixed: fixedList });
     else if (settings.testMode && (corrected || titlePairs.length)) {
       // modo de teste: frase que a pessoa precisou corrigir fica guardada sozinha
-      addMisheard(text, [], { heard: heard ? heard.original : null, alts: heard ? heard.alts : [], audio: heard ? keepAudio(heard.audio) : null, fixed: fixedList });
+      addMisheard(text, [], { ...heardExtra(), fixed: fixedList });
     }
     close();
     // aviso de gasto: confere o orçamento do mês com os gastos que acabaram de entrar

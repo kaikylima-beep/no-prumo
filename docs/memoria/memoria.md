@@ -106,6 +106,7 @@ Estado em 10/11/2026, versão **1.13.0** (versionName 1.13.0, versionCode 23), e
 - **Acessibilidade:** contraste mínimo 4,5:1, alvo de toque mínimo 44, dinheiro não depende de vermelho × verde ("+", "−", "⇄").
 
 ### Voz (1.12.1 e 1.12.2)
+- **1.13.1 · fala natural (10/11, em teste; detalhe e fontes em `voz.md`, seções 7 a 12):** a voz passou a ter as quatro etapas dos assistentes. (1) `src/normalize.js` arruma a fala antes de interpretar: tira vícios de fala e pedidos ao app (`cleanSpeech`), entende a correção dita na hora e escreve horas faladas como "3:30" (`canonSpeech`); `normalizeSpeech` (`parser.js`) junta tudo. (2) Gramática de datas e horas ampliada (`extractDay`), hora de 1 a 6 em outro dia = tarde (`afternoonIfBare`). (3) Número só é dinheiro com pista (`maskQuantities`). (4) `breakOnActions` refeito: um item = um assunto, um dia, uma hora, um valor; verbo pela forma da palavra (`isActionVerb`), pedaços de dia/hora (`temporalSpans`). (5) `pickBest` mistura as versões palavra por palavra (`mixAlts`) e só troca a 1ª com prova concreta. (6) Pausa vira vírgula (`joinPieces`, `pauseCommas`). Banco de 278 frases em `scripts/fixtures/banco-voz.mjs`: 46% → 99%; 84% em frases nunca vistas.
 - **Reconhecimento (`src/speech.js`):** tenta, na ordem, (0) no próprio celular com pontuação, vocabulário e 5 versões; (1) serviço padrão com pontuação, vocabulário e 5 versões; (2) modo da 1.12 com 5 versões. Se um nível falhar logo no começo, sem ouvir nada, passa ao próximo sozinho; se faltar o modelo de português no aparelho, pede o download. O nível que funcionou fica valendo enquanto o app está aberto. **1.12.3 (Bixby):** no Samsung, o serviço padrão (inclusive o de `createOnDeviceSpeechRecognizer`) é o da Samsung e abria o Bixby. Agora `pickService` (`voice.js`) escolhe o Google pelo nome: `com.google.android.as` (só no aparelho) > `com.google.android.tts` > `com.google.android.googlequicksearchbox`; no nível "no celular" com Google vai `EXTRA_PREFER_OFFLINE`. Sem Google, fica o serviço do sistema. Os três pacotes estão em `androidSpeechServicePackages` (app.json), senão o app não os enxerga. Com o áudio guardado, o Android espera 2 s de silêncio e entrega a fala em pedaços; o app junta os pedaços e só interpreta quando a escuta termina. Chave em Ajustes → Voz: "Reconhecer a voz no próprio celular (quando der)"; o modo usado na última vez aparece ali. **No S25 do Kaiky (09/11): "no celular, com pontuação" funcionou.**
 - **Vocabulário (`buildVocab`):** palavras do app (Pix, prova, estudar, boleto…), matérias ativas e apelidos, nomes das contas, trocas aprendidas e palavras que aparecem 2 vezes ou mais nos títulos da pessoa; até 100. No S25, "Pix" ainda saiu como "pics" (09/11): o vocabulário não garante a palavra; quem resolve é o dicionário pessoal.
 - **Escolha da versão (`pickBest`):** cada versão ouvida passa pelo dicionário pessoal e pelo interpretador; ganha a que rende itens com dia, hora e valor, títulos curtos e palavras do vocabulário. A 1ª do Android só perde se outra for claramente melhor.
@@ -178,7 +179,7 @@ Estado em 10/11/2026, versão **1.13.0** (versionName 1.13.0, versionCode 23), e
 ### Fluxo principal
 `index.js` registra a tarefa dos botões dos avisos e abre `src/Root.js`, que lê o visual salvo, aplica cores e fontes e só então carrega `App.js`.
 
-Fala → `src/speech.js` (versões ouvidas + áudio) → `src/voice.js` (dicionário pessoal e escolha da melhor versão) → `src/parser.js` → `enrichParsed` (`src/subjects.js`) → confirmação em `src/CaptureModal.js` → `src/store.js` → AsyncStorage e `src/reminders.js`. Texto digitado entra direto no `parser.js`.
+Fala → `src/speech.js` (versões ouvidas, pausas, confiança + áudio) → `src/voice.js` (dicionário pessoal, escolha e mistura das versões) → `src/normalize.js` (arruma a fala) → `src/parser.js` → `enrichParsed` (`src/subjects.js`) → confirmação em `src/CaptureModal.js` → `src/store.js` → AsyncStorage e `src/reminders.js`. Texto digitado entra direto no `parser.js`.
 
 Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → `src/documentParser.js` → `reconcile` (`src/accounts.js`) → revisão em lote em `src/EditSheet.js`.
 
@@ -191,6 +192,7 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
 | `src/storage.js` | `useStoredState`, estado salvo no AsyncStorage |
 | `src/speech.js` | Reconhecimento de voz em níveis (`useSpeech`, `speechMode`) |
 | `src/voice.js` | Vocabulário, escolha da versão, dicionário pessoal (`buildVocab`, `pickBest`, `diffWords`, `learn`, `applyLearned`) |
+| `src/normalize.js` | 1.13.1: arruma a fala antes de interpretar (`cleanSpeech`, `fixRepairs`, `canonSpeech`); `fold` mora aqui |
 | `src/parser.js` | Interpretador de frases (`splitGroups` separa os itens, `breakOnActions` separa fala corrida, `CONDITION_RE` tira o contexto, `abbreviate` faz o título curto) e planejamento dos avisos |
 | `src/recurrence.js` | Lembretes que se repetem |
 | `src/subjects.js` | Matérias, ocupação, semestre |
@@ -321,7 +323,7 @@ Importação: arquivo escolhido ou Compartilhar → `src/importDocument.js` → 
 | Pergunta dos Pix na revisão de importação | Só por teste automático |
 
 ### Limitações atuais
-- O interpretador continua por regras: o banco de frases tem 8 frases; ele precisa crescer com as frases do campo Testes para medir de verdade.
+- O interpretador continua por regras, agora medido: banco de 278 frases (1.13.1), 84% de acerto em frase nunca vista. Pausas, confiança e mistura de versões ainda sem teste no celular.
 - O dicionário pessoal só aprende com o que a pessoa corrige; a 1ª correção vira sugestão, não troca sozinha.
 - As 3 frases guardadas antes da 1.12.2 continuam no celular, mas só aparecem com o modo de teste ligado.
 - O áudio das frases guardadas não sai do celular pelo "Mandar as frases" (só o texto).

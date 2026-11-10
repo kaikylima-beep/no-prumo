@@ -28,7 +28,9 @@ writeFileSync(
   readFileSync(join(root, 'src/parser.js'), 'utf8')
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './recurrence'", "from './recurrence.mjs'")
+    .replace("from './normalize'", "from './normalize.mjs'")
 );
+writeFileSync(join(dir, 'normalize.mjs'), readFileSync(join(root, 'src/normalize.js'), 'utf8'));
 writeFileSync(join(dir, 'financeFixes.mjs'), readFileSync(join(root, 'src/financeFixes.js'), 'utf8'));
 writeFileSync(
   join(dir, 'documentParser.mjs'),
@@ -1022,7 +1024,8 @@ export default {
   const dir12 = mkdtempSync(join(tmpdir(), 'prumo-112-'));
   writeFileSync(join(dir12, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
   writeFileSync(join(dir12, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(dir12, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'"));
+  writeFileSync(join(dir12, 'normalize.mjs'), readFileSync(join(root, 'src/normalize.js'), 'utf8'));
+  writeFileSync(join(dir12, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'"));
   writeFileSync(join(dir12, 'subjects.mjs'), readFileSync(join(root, 'src/subjects.js'), 'utf8').replace("from './parser'", "from './parser.mjs'").replace("from './utils'", "from './utils.mjs'"));
   writeFileSync(join(dir12, 'holidays.mjs'), readFileSync(join(root, 'src/holidays.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
   writeFileSync(join(dir12, 'theme.mjs'), readFileSync(join(root, 'src/theme.js'), 'utf8'));
@@ -1186,7 +1189,8 @@ export default {
   const d = mkdtempSync(join(tmpdir(), 'prumo-1121-'));
   writeFileSync(join(d, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
   writeFileSync(join(d, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(d, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'"));
+  writeFileSync(join(d, 'normalize.mjs'), readFileSync(join(root, 'src/normalize.js'), 'utf8'));
+  writeFileSync(join(d, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'"));
   writeFileSync(join(d, 'voice.mjs'), readFileSync(join(root, 'src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
   const P = await import(pathToFileURL(join(d, 'parser.mjs')).href);
   const V = await import(pathToFileURL(join(d, 'voice.mjs')).href);
@@ -1326,8 +1330,9 @@ check('paguei a luz 120', [{ kind: 'finance', amount: 120, status: 'paid' }]);
   writeFileSync(join(d3, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
   writeFileSync(
     join(d3, 'parser.mjs'),
-    readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'")
+    readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'")
   );
+  writeFileSync(join(d3, 'normalize.mjs'), readFileSync(join(root, 'src/normalize.js'), 'utf8'));
   writeFileSync(join(d3, 'rnStub.mjs'), `export const Platform = { OS: 'test' };`);
   writeFileSync(
     join(d3, 'reminders.mjs'),
@@ -1481,7 +1486,8 @@ export default {
   const cp = (src, dst, reps = []) => writeFileSync(join(d5, dst), reps.reduce((t, [a, b]) => t.split(a).join(b), readFileSync(join(root, src), 'utf8')));
   cp('src/utils.js', 'utils.mjs');
   cp('src/recurrence.js', 'recurrence.mjs', [["from './utils'", "from './utils.mjs'"]]);
-  cp('src/parser.js', 'parser.mjs', [["from './utils'", "from './utils.mjs'"], ["from './recurrence'", "from './recurrence.mjs'"]]);
+  cp('src/normalize.js', 'normalize.mjs');
+  cp('src/parser.js', 'parser.mjs', [["from './utils'", "from './utils.mjs'"], ["from './recurrence'", "from './recurrence.mjs'"], ["from './normalize'", "from './normalize.mjs'"]]);
   cp('src/subjects.js', 'subjects.mjs', [["from './parser'", "from './parser.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
   cp('src/holidays.js', 'holidays.mjs', [["from './utils'", "from './utils.mjs'"]]);
   cp('src/academic.js', 'academic.mjs', [["from './parser'", "from './parser.mjs'"], ["from './subjects'", "from './subjects.mjs'"], ["from './holidays'", "from './holidays.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
@@ -1541,6 +1547,131 @@ export default {
   // aviso "Foi na aula?"
   const ends = AD.upcomingClassEnds([fis], { start: '2026-08-01', end: '2026-12-15' }, A, null, new Date(2026, 10, 9, 12, 0), 7);
   ok('aviso depois da aula: segunda 14:45 (5 min depois do fim)', ends.map((e) => [e.date, e.end, e.count, e.at.getHours(), e.at.getMinutes()]), [['2026-11-09', '14:40', 2, 14, 45], ['2026-11-16', '14:40', 2, 14, 45]]);
+}
+
+
+// ---------- 1.13.1: fala natural (normalização, datas e horas faladas, vários pedidos, versões e pausas) ----------
+{
+  const d = mkdtempSync(join(tmpdir(), 'prumo-1131-'));
+  const cp = (name, deps = []) => {
+    let src = readFileSync(join(root, `src/${name}.js`), 'utf8');
+    deps.forEach((dep) => (src = src.replace(`from './${dep}'`, `from './${dep}.mjs'`)));
+    writeFileSync(join(d, `${name}.mjs`), src);
+  };
+  cp('utils');
+  cp('recurrence', ['utils']);
+  cp('normalize');
+  cp('parser', ['utils', 'recurrence', 'normalize']);
+  cp('voice', ['parser']);
+  const P = await import(pathToFileURL(join(d, 'parser.mjs')).href);
+  const N = await import(pathToFileURL(join(d, 'normalize.mjs')).href);
+  const V = await import(pathToFileURL(join(d, 'voice.mjs')).href);
+  rmSync(d, { recursive: true, force: true });
+  const { VOICE_BANK, BANK_DAY, BANK_NOW } = await import(pathToFileURL(join(root, 'scripts/fixtures/banco-voz.mjs')).href);
+  const ok = (name, got, exp) => {
+    total++;
+    if (JSON.stringify(got) !== JSON.stringify(exp)) {
+      fails++;
+      console.log(`FALHOU  1.13.1: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`);
+    } else console.log(`ok      1.13.1: ${name}`);
+  };
+  const NOW2 = new Date(...BANK_NOW);
+
+  // Banco de fala natural: cada frase é um teste. As marcadas 'aberta' contam só no placar.
+  const by = {};
+  let right = 0;
+  let stillOpen = 0;
+  VOICE_BANK.forEach(([group, phrase, expected, open]) => {
+    const got = P.parseInput(phrase, BANK_DAY, NOW2);
+    const problems = [];
+    if (got.length !== expected.length) problems.push(`esperava ${expected.length} item(ns), veio ${got.length}`);
+    expected.forEach((exp, i) => {
+      const g = got[i] || {};
+      for (const [k, v] of Object.entries(exp)) {
+        const gv = k.split('.').reduce((o, part) => (o == null ? undefined : o[part]), g);
+        if (JSON.stringify(gv ?? null) !== JSON.stringify(v)) problems.push(`item ${i + 1}.${k}: esperava ${JSON.stringify(v)}, veio ${JSON.stringify(gv ?? null)}`);
+      }
+    });
+    by[group] = by[group] || [0, 0];
+    by[group][1]++;
+    if (!problems.length) {
+      right++;
+      by[group][0]++;
+    }
+    if (open) {
+      if (problems.length) stillOpen++;
+      else console.log(`        (frase aberta que já passa, pode fechar: "${phrase}")`);
+      return;
+    }
+    total++;
+    if (problems.length) {
+      fails++;
+      console.log(`FALHOU  fala: "${phrase}"`);
+      problems.forEach((x) => console.log('        ' + x));
+    } else console.log(`ok      fala: "${phrase}"`);
+  });
+  console.log(`        placar da fala natural: ${right}/${VOICE_BANK.length} certas sem editar (${Object.entries(by).map(([g, [a, b]]) => `${g} ${a}/${b}`).join(', ')}; ${stillOpen} abertas)`);
+  ok('placar da fala natural: pelo menos 95%', right / VOICE_BANK.length >= 0.95, true);
+
+  // 1) arrumar a fala
+  ok('vícios de fala saem', N.cleanSpeech('é então eu preciso tipo lavar o carro amanhã né'), 'eu preciso lavar o carro amanhã');
+  ok('pedido ao app sai', [N.cleanSpeech('anota aí comprar pão'), N.cleanSpeech('cria um lembrete pra tomar remédio'), N.cleanSpeech('eu queria que você me lembrasse de pagar a luz')], ['comprar pão', 'tomar remédio', 'pagar a luz']);
+  ok('palavra repetida sai', N.cleanSpeech('eu eu preciso preciso ligar pro João'), 'eu preciso ligar pro João');
+  ok('"um tipo de arroz" fica', N.cleanSpeech('comprar um tipo de arroz'), 'comprar um tipo de arroz');
+  ok('"assim que eu acordar" fica', N.cleanSpeech('assim que eu acordar tomar o remédio'), 'assim que eu acordar tomar o remédio');
+  ok('"coloca gasolina" é tarefa, não pedido ao app', N.cleanSpeech('coloca gasolina no carro'), 'coloca gasolina no carro');
+  ok('"1.800,00" não é fim de frase', N.cleanSpeech('cartão R$ 1.800,00 e Nubank 900'), 'cartão R$ 1.800,00 e Nubank 900');
+  ok('correção dita na hora: dia', N.canonSpeech('lavar o carro amanhã não sexta'), 'lavar o carro sexta');
+  ok('correção dita na hora: hora', N.canonSpeech('reunião às 3 não às 4 da tarde'), 'reunião às 4 da tarde');
+  ok('correção dita na hora: valor', N.canonSpeech('gastei 50 quer dizer 60 no mercado'), 'gastei 60 no mercado');
+  ok('"hoje não posso" não é correção', N.canonSpeech('hoje não posso ir'), 'hoje não posso ir');
+  ok('"3 e meia" vira 3:30', N.canonSpeech('reunião às 3 e meia da tarde'), 'reunião às 3:30 da tarde');
+  ok('"15 para as 8" vira 7:45', N.canonSpeech('ligar 15 para as 8 da noite'), 'ligar às 7:45 da noite');
+  ok('"meio-dia e meia" vira 12:30', N.canonSpeech('reunião ao meio-dia e meia'), 'reunião às 12:30');
+  ok('"2 horas e meia" é duração', N.canonSpeech('estudar 2 horas e meia'), 'estudar 2 horas e meia');
+  ok('"12 e 50" sem contexto de hora é dinheiro', N.canonSpeech('gastei 12 e 50'), 'gastei 12 e 50');
+  ok('"15 para as 3 contas" não é hora', N.canonSpeech('transferir 15 para as 3 contas'), 'transferir 15 para as 3 contas');
+  ok('"viagem de 15 horas" é duração', N.canonSpeech('viagem de 15 horas'), 'viagem de 15 horas');
+  ok('"2 mil" e "3 mil e quinhentos"', [P.wordsToNumbers('recebi 2 mil'), P.wordsToNumbers('paguei R$ 3 mil e quinhentos'), P.wordsToNumbers('gastei 1,5 mil')], ['recebi 2000', 'paguei R$ 3500', 'gastei 1,5 mil']);
+
+  // 2) interpretar
+  const one = (t) => P.parseInput(t, BANK_DAY, NOW2).map((i) => [i.kind, i.title, i.date, i.time, i.amount ?? null]);
+  ok('número com unidade não é dinheiro', [one('remédio 3 vezes ao dia')[0][0], one('ler 30 páginas do livro')[0][0], one('mercado 30')[0][0]], ['task', 'task', 'finance']);
+  ok('verbo pela forma da palavra', [P.isActionVerb('pesquisar'), P.isActionVerb('calibrar'), P.isActionVerb('almocei'), P.isActionVerb('celular'), P.isActionVerb('uber'), P.isActionVerb('mulher')], [true, true, true, false, false, false]);
+  ok('pedaços de dia e hora', P.temporalSpans('reuniao amanha as 9 dentista sexta').map((x) => x.type), ['date', 'time', 'date']);
+  ok('"de segunda a sexta" continua um item só', one('estudar inglês de segunda a sexta às 19h').length, 1);
+  ok('"prova de sexta" não separa', one('estudar para a prova de sexta').length, 1);
+  ok('"me lembrar em 4 dias" não é outro dia', one('prova de circuitos dia 27 me lembrar em 4 dias').length, 1);
+  ok('"às 3" em outro dia é à tarde; "acordar às 5" fica de manhã', [one('reunião quinta às 3')[0][3], one('acordar às 5 amanhã')[0][3], one('reunião quinta às 3 da manhã')[0][3]], ['15:00', '05:00', '03:00']);
+  ok('dia dito antes da pausa vale para o que vem depois', [one('amanhã, lavar o carro')[0][2], one('hoje, lavar a louça, arrumar o quarto').map((x) => x[2])], ['2026-11-10', [BANK_DAY, BANK_DAY]]);
+  ok('"Tomar remédio. Todo dia às 8h" continua valendo para o item anterior', P.parseInput('Tomar remédio. Todo dia às 8h', BANK_DAY, NOW2).map((i) => [i.title, i.repeat && i.repeat.freq, i.time]), [['Tomar remédio', 'daily', '08:00']]);
+  ok('marcas internas não saem do interpretador', P.parseInput('amanhã tem reunião às 9 dentista às 14 e depois academia', BANK_DAY, NOW2).every((i) => !('hard' in i) && !('after' in i) && !('saidTime' in i) && !('periodTime' in i) && !('autoToday' in i) && !/[\u0004\u0005]/.test(i.raw)), true);
+
+  // 3) versões ouvidas: mistura palavra por palavra, só com prova concreta
+  const vocab = V.buildVocab({ subjects: [{ name: 'Química' }], titles: ['Lavar o carro', 'Lavar o carro'] });
+  const pick = (alts, conf) => V.pickBest(alts, BANK_DAY, NOW2, vocab, conf);
+  ok('mistura "pix" de uma versão com "estudar" da outra', pick(['fazer o pique do Bruno de 60 estudar para prova de química', 'fazer o pix do Bruno de 60 isso dá para prova de química']).text, 'fazer o pix do Bruno de 60 estudar para prova de química');
+  ok('mais itens não é prova: "para" não vira "parar"', pick(['ligar para o João amanhã', 'ligar parar o João amanhã']).text, 'ligar para o João amanhã');
+  ok('parte do dia não é prova: "amanhã" não vira "a manhã"', pick(['comprar pão amanhã', 'comprar pão a manhã', 'comprar pau amanhã']).text, 'comprar pão amanhã');
+  ok('valor é prova: "sem reais" perde para "100 reais"', pick(['paguei sem reais de luz', 'paguei 100 reais de luz']).text, 'paguei 100 reais de luz');
+  ok('palavra que a pessoa usa é prova: "caro" perde para "carro"', pick(['lavar o caro amanhã as dez', 'lavar o carro amanhã às 10']).text, 'lavar o carro amanhã às 10');
+  ok('mistura não inventa palavra', V.mixAlts('a b c', ['a x c'], () => 0).text, 'a b c');
+
+  // 4) pausas
+  ok('pausa entre pedaços vira vírgula', V.joinPieces([['lavar o carro', 'lavar o caro'], ['Comprar pão.'], ['amanhã']]), ['lavar o carro, Comprar pão. amanhã', 'lavar o caro, Comprar pão. amanhã']);
+  const W = (arr) => arr.map(([segment, startTimeMillis]) => ({ segment, startTimeMillis }));
+  ok('pausa longa entre palavras vira vírgula', V.pauseCommas('lavar o carro comprar pão amanhã', W([['lavar', 0], ['o', 350], ['carro', 480], ['comprar', 2100], ['pão', 2500], ['amanhã', 2800]])), 'lavar o carro, comprar pão amanhã');
+  ok('fala corrida fica como veio', V.pauseCommas('lavar o carro comprar pão amanhã', W([['lavar', 0], ['o', 350], ['carro', 480], ['comprar', 900], ['pão', 1300], ['amanhã', 1600]])), 'lavar o carro comprar pão amanhã');
+  ok('tempos que não batem com o texto: não mexe', V.pauseCommas('lavar o carro comprar pão', W([['lavar', 0], ['o', 0], ['carro', 5000]])), 'lavar o carro comprar pão');
+  ok('pausa depois de "às" ou "dia" é a pessoa pensando: sem vírgula', [V.joinPieces([['reunião às'], ['10 da noite']]), V.pauseCommas('prova dia 25 amanhã', W([['prova', 0], ['dia', 400], ['25', 2500], ['amanhã', 3000]]))], [['reunião às 10 da noite'], 'prova dia 25 amanhã']);
+  ok('com a pausa, os dois pedidos saem separados', one('lavar o carro, comprar pão amanhã').map((x) => x[1]), ['Lavar o carro', 'Comprar pão']);
+
+  // código
+  const sp = readFileSync(join(root, 'src/speech.js'), 'utf8');
+  ok('a escuta guarda a pausa e a confiança', /pauseCommas\(/.test(sp) && /joinPieces\(/.test(sp) && /r\.confidence/.test(sp), true);
+  const cm = readFileSync(join(root, 'src/CaptureModal.js'), 'utf8');
+  ok('a tela usa a versão misturada e a confiança', /best\.text/.test(cm) && /info\.conf/.test(cm), true);
+  ok('modo de teste guarda confiança e tempo das palavras', /timing: heard \? heard\.timing/.test(cm) && /tempo das palavras/.test(readFileSync(join(root, 'src/Drawer.js'), 'utf8')), true);
 }
 
 console.log(`\n${total - fails}/${total} passaram`);
