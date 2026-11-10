@@ -30,6 +30,10 @@ Instale por cima (os dados continuam). Marque o que funcionou; o que não funcio
 - [ ] Feche o app por mais de 10 minutos e abra. "Você tem N tarefas para hoje" = o número do cartão azul de Tarefas.
 - [ ] Com uma prova só daqui a vários dias, o app **não** diz "você precisa concluir seus lembretes de Estudos".
 
+**Voz sem Bixby**
+- [ ] Tocar no microfone 3 vezes, em momentos diferentes: o Bixby **não** abre.
+- [ ] Ajustes → Voz → "Última vez:" deve citar o Google.
+
 **Voz (campo Testes)**
 - [ ] "chegando em casa eu tenho que lavar o carro" → Tarefa "Lavar carro".
 - [ ] "saindo do trabalho eu preciso passar no mercado" → Tarefa "Passar mercado".

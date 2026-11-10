@@ -196,3 +196,17 @@ export function otherVersions(alts, chosen) {
   });
   return out.slice(0, 2);
 }
+
+// ---------- qual serviço de voz do Android usar (1.12.3) ----------
+// Em celulares Samsung, o serviço padrão (inclusive o "no próprio celular") pode ser o da
+// Samsung, que abre o Bixby. Quando o Google está instalado, o app pede o Google pelo nome.
+export const GOOGLE_ON_DEVICE = 'com.google.android.as'; // reconhecimento do Google só no aparelho
+export const GOOGLE_SERVICES = ['com.google.android.tts', 'com.google.android.googlequicksearchbox'];
+
+// list = serviços que o aparelho tem; onDevice = a pessoa quer reconhecer no celular.
+// → { pkg, offline } ou null (sem Google: fica o serviço do sistema)
+export function pickService(list = [], onDevice = false) {
+  if (onDevice && list.includes(GOOGLE_ON_DEVICE)) return { pkg: GOOGLE_ON_DEVICE, offline: true };
+  const g = GOOGLE_SERVICES.find((p) => list.includes(p));
+  return g ? { pkg: g, offline: !!onDevice } : null;
+}

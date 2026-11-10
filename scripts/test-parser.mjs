@@ -1393,6 +1393,20 @@ export default {
   const back = JSON.parse(await AS.getItem('@org2/tasks'));
   ok('voltar ao que havia também refaz os avisos', [back[0].id, log.canceled, back[0].notifIds.length], ['velha', 2, 1]);
   ok('sem o módulo de avisos, restaurar continua funcionando', await BK.remakeReminders(null), false);
+  // Bixby: com o Google instalado, o app escolhe o Google pelo nome
+  writeFileSync(join(d3, 'voice.mjs'), readFileSync(join(root, 'src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
+  const VO = await import(pathToFileURL(join(d3, 'voice.mjs')).href);
+  const samsung = ['com.samsung.android.bixby.agent', 'com.google.android.tts', 'com.google.android.googlequicksearchbox'];
+  ok('Samsung com Google: "no celular" usa o Google, de preferência sem internet', VO.pickService(samsung, true), { pkg: 'com.google.android.tts', offline: true });
+  ok('Samsung com Google: "pelo Google" usa o Google', VO.pickService(samsung, false), { pkg: 'com.google.android.tts', offline: false });
+  ok('com o reconhecimento do Google no aparelho, ele vem primeiro', VO.pickService(['com.google.android.as', ...samsung], true), { pkg: 'com.google.android.as', offline: true });
+  ok('só o app do Google: usa ele', VO.pickService(['com.google.android.googlequicksearchbox'], false), { pkg: 'com.google.android.googlequicksearchbox', offline: false });
+  ok('sem Google: fica o serviço do sistema', VO.pickService(['com.samsung.android.bixby.agent'], true), null);
+  const sp = readFileSync(join(root, 'src/speech.js'), 'utf8');
+  ok('o pedido ao Android leva o serviço escolhido', /androidRecognitionServicePackage: svc\.pkg/.test(sp) && /requiresOnDeviceRecognition: !!L\.onDevice && !svc/.test(sp), true);
+  const appj = JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'));
+  const sr = appj.expo.plugins.find((x) => Array.isArray(x) && x[0] === 'expo-speech-recognition');
+  ok('o app enxerga os serviços de voz do Google', ['com.google.android.tts', 'com.google.android.as', 'com.google.android.googlequicksearchbox'].every((x) => sr[1].androidSpeechServicePackages.includes(x)), true);
   rmSync(d3, { recursive: true, force: true });
 }
 

@@ -10,6 +10,7 @@
 // A fala pode chegar em pedaços (o Android corta nas pausas): o app junta os pedaços
 // e só interpreta quando o Android encerra a escuta.
 import { useCallback, useRef, useState } from 'react';
+import { pickService } from './voice';
 
 let Mod = null;
 let useSpeechEvent = null;
@@ -37,6 +38,26 @@ let lastMode = '';
 
 export function speechMode() {
   return lastMode;
+}
+
+// serviços de voz que o aparelho tem (lidos uma vez)
+let services = null;
+function availableServices() {
+  if (services) return services;
+  try {
+    services = (Mod && typeof Mod.getSpeechRecognitionServices === 'function' && Mod.getSpeechRecognitionServices()) || [];
+  } catch (e) {
+    services = [];
+  }
+  return services;
+}
+
+// nome do modo para Ajustes → Voz
+function modeName(level, svc) {
+  const L = LEVELS[level];
+  if (!svc) return L.name;
+  if (L.onDevice) return svc.pkg === 'com.google.android.as' ? 'no celular (Google), com pontuação' : 'Google, de preferência no celular, com pontuação';
+  return L.rich ? 'pelo Google, com pontuação' : 'modo simples (Google)';
 }
 
 function canOnDevice() {
@@ -90,22 +111,26 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
 
   const options = (level) => {
     const L = LEVELS[level];
+    // 1.12.3: Google pelo nome quando existe (no Samsung, o serviço padrão abria o Bixby)
+    const svc = pickService(availableServices(), !!L.onDevice);
     const base = {
       lang: 'pt-BR',
       interimResults: true,
       continuous: false,
       maxAlternatives: 5,
       volumeChangeEventOptions: { enabled: true, intervalMillis: 90 },
+      ...(svc ? { androidRecognitionServicePackage: svc.pkg } : null),
     };
     if (!L.rich) return base;
     return {
       ...base,
       addsPunctuation: true,
       contextualStrings: (vocab && vocab()) || [],
-      requiresOnDeviceRecognition: !!L.onDevice,
+      // sem o Google, "no celular" fica com o serviço do sistema
+      requiresOnDeviceRecognition: !!L.onDevice && !svc,
       // guarda o áudio (Android 13+): serve para "Guardar para correção" e faz o Android esperar 2 s de silêncio
       recordingOptions: { persist: true },
-      androidIntentOptions: { EXTRA_MASK_OFFENSIVE_WORDS: false },
+      androidIntentOptions: { EXTRA_MASK_OFFENSIVE_WORDS: false, ...(svc && svc.offline ? { EXTRA_PREFER_OFFLINE: true } : null) },
     };
   };
 
@@ -118,12 +143,13 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
     s.audio = null;
     s.stopped = false;
     s.startedAt = Date.now();
-    lastMode = LEVELS[level].name;
+    lastMode = modeName(level, pickService(availableServices(), !!LEVELS[level].onDevice));
     Mod.start(options(level));
   };
 
   const firstLevel = () => {
-    const wanted = onDevice && canOnDevice() ? 0 : 1;
+    const google = pickService(availableServices(), true);
+    const wanted = onDevice && (canOnDevice() || (google && google.offline)) ? 0 : 1;
     return workingLevel !== null ? Math.max(workingLevel, wanted) : wanted;
   };
 
@@ -133,7 +159,7 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
     if (s.gotResult || s.stopped || s.level >= LEVELS.length - 1) return false;
     if (['aborted', 'no-speech', 'not-allowed', 'service-not-allowed', 'speech-timeout'].includes(code)) return false;
     if (Date.now() - s.startedAt > 4000) return false;
-    if (LEVELS[s.level].onDevice && code === 'language-not-supported' && !modelAsked) {
+    if (LEVELS[s.level].onDevice && code === 'language-not-supported' && !modelAsked && !pickService(availableServices(), true)) {
       // falta o modelo de português no aparelho: pede o download e segue pelo Google por enquanto
       modelAsked = true;
       try {

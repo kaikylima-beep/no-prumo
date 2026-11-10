@@ -41,7 +41,9 @@
           "microphonePermission": "Permitir que o app use o microfone para ouvir o que você fala.",
           "speechRecognitionPermission": "Permitir que o app reconheça sua fala.",
           "androidSpeechServicePackages": [
-            "com.google.android.googlequicksearchbox"
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts",
+            "com.google.android.as"
           ]
         }
       ],
