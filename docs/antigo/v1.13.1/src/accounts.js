@@ -171,23 +171,35 @@ export function reconcile(items, existing, accId, accounts = []) {
   const cards = accounts.filter((a) => a.kind === 'cartao' && a.id !== accId);
   const cardHasPurchases = (cid) => existing.some((e) => e.type === 'out' && e.account === cid);
   const accName = (id) => accountLabel(id, accounts);
+  const sameEntry = (e, n, dates) =>
+    !used.has(e.id) &&
+    dates.includes(e.date) &&
+    sameMoney(e.amount, n.amount) &&
+    signFor(e, accId) === newSign(n) &&
+    (e.type === 'transfer' || e.account == null || e.account === accId);
+  // 1.13.1: primeiro o que já está no app no mesmo dia; depois, o mesmo lançamento com a outra data
+  // em que ele aparece em outro extrato (dia da compra × dia em que o banco lançou, `sameAs`).
+  // Fazer o mesmo dia antes evita confundir duas compras iguais em dias diferentes.
+  const exact = items.map((n) => {
+    const e = existing.find((x) => sameEntry(x, n, [n.date]));
+    if (e) used.add(e.id);
+    return e || null;
+  });
 
-  return items.map((raw) => {
+  return items.map((raw, k) => {
     const n = { ...raw };
     const s = newSign(n);
     const out = { ...n, action: 'add', targetId: null, convert: false, hint: n.hint || '', selected: n.selected !== false };
+    delete out.sameAs;
 
     // 1) já está no app (reimportar o mesmo extrato, ou lançado antes à mão sem conta)
-    const dup = existing.find(
-      (e) =>
-        !used.has(e.id) &&
-        e.date === n.date &&
-        sameMoney(e.amount, n.amount) &&
-        signFor(e, accId) === s &&
-        (e.type === 'transfer' || e.account == null || e.account === accId)
-    );
+    let dup = exact[k];
+    if (!dup && n.sameAs && n.sameAs.length) {
+      dup = existing.find((x) => sameEntry(x, n, n.sameAs)) || null;
+    }
     if (dup) {
       used.add(dup.id);
+      const otherDay = dup.date !== n.date;
       const convert = n.type === 'transfer' && dup.type !== 'transfer';
       return {
         ...out,
@@ -197,7 +209,9 @@ export function reconcile(items, existing, accId, accounts = []) {
         selected: false,
         hint: convert
           ? `Já está no app como ${dup.type === 'in' ? 'entrada' : 'saída'}; vai virar transferência entre suas contas`
-          : 'Já está no app (mesmo dia e valor)',
+          : otherDay
+            ? `Já está no app em ${fmtDay(dup.date)} (o banco mostra a mesma compra com outra data)`
+            : 'Já está no app (mesmo dia e valor)',
       };
     }
 

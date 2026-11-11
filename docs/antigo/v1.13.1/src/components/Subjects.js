@@ -12,6 +12,8 @@ import {
   WEEK_CHIPS, emptySchedule, emptySubjectForm, itemsToLink, nextClassLabel, readSemester, readSubjectForm,
   scheduleLabel, semesterEnded, semesterLabel, toSubjectForm,
 } from '../subjects';
+import { absenceSummary, absenceLine, gradeSummary, gradeLine } from '../academic';
+import SubjectDetail from './SubjectDetail';
 
 // Linha pequena com a cor e o nome da matéria (usada nas provas e entregas)
 export function SubjectTag({ subject, style }) {
@@ -31,6 +33,7 @@ export default function SubjectsTab() {
   const pal = palettes.study;
   const today = todayISO();
   const [editing, setEditing] = useState(null); // { subject } ou {} para uma nova
+  const [detail, setDetail] = useState(null); // 1.13: id da matéria aberta em Notas e faltas
   const [showArchived, setShowArchived] = useState(false);
   const [semesterForm, setSemesterForm] = useState(null);
   const [semesterError, setSemesterError] = useState('');
@@ -75,24 +78,31 @@ export default function SubjectsTab() {
     const n = openItems(x.id);
     const line = [next || 'Sem horário', x.room].filter(Boolean).join(' · ');
     const count = n ? `${n} ${n === 1 ? 'prova ou entrega' : 'provas ou entregas'}` : null;
+    // 1.13: faltas e média na própria matéria
+    const abs = absenceSummary(x, settings.academic, settings.semester, settings.profile.state);
+    const gs = gradeSummary(x, settings.academic);
+    const school = `${absenceLine(abs)} · ${gradeLine(gs)}`;
+    const warn = abs.status === 'near' || abs.status === 'over' || gs.status === 'impossible';
     if (simple) {
       return (
-        <Pressable key={x.id} onPress={() => setEditing({ subject: x })} style={({ pressed }) => [st.rowSimple, pressed && { opacity: 0.6 }]} accessibilityRole="button">
+        <Pressable key={x.id} onPress={() => setDetail(x.id)} style={({ pressed }) => [st.rowSimple, pressed && { opacity: 0.6 }]} accessibilityRole="button" accessibilityHint="Abre notas e faltas">
           <Dot color={c.main} size={9} style={{ marginRight: 12, marginTop: 7 }} />
           <View style={{ flex: 1 }}>
             <Text style={st.nameSimple}>{x.name}</Text>
             <Text style={st.meta}>{line}{count ? ` · ${count}` : ''}</Text>
+            <Text style={[st.meta, warn && { color: colors.warn }]}>{school}</Text>
           </View>
         </Pressable>
       );
     }
     return (
-      <Pressable key={x.id} onPress={() => setEditing({ subject: x })} style={({ pressed }) => [st.card, { backgroundColor: c.tint }, pressed && { opacity: 0.75 }]} accessibilityRole="button">
+      <Pressable key={x.id} onPress={() => setDetail(x.id)} style={({ pressed }) => [st.card, { backgroundColor: c.tint }, pressed && { opacity: 0.75 }]} accessibilityRole="button" accessibilityHint="Abre notas e faltas">
         <View style={[st.band, { backgroundColor: c.main }]} />
         <View style={{ flex: 1 }}>
           <Text style={[st.name, { color: c.main }]}>{x.name}</Text>
           <Text style={st.cardMeta}>{line}</Text>
           {count ? <Text style={st.cardMeta}>{count}</Text> : null}
+          <Text style={[st.cardMeta, { fontWeight: '600' }, warn && { color: colors.warn }]}>{school}</Text>
         </View>
       </Pressable>
     );
@@ -164,6 +174,22 @@ export default function SubjectsTab() {
             : null}
         </View>
       ) : null}
+
+      <Modal visible={!!detail} animationType="slide" onRequestClose={() => setDetail(null)} statusBarTranslucent>
+        <SafeAreaProvider>
+          {detail ? (
+            <SubjectDetail
+              subjectId={detail}
+              onClose={() => setDetail(null)}
+              onEdit={() => {
+                const subject = subjects.find((x) => x.id === detail);
+                setDetail(null);
+                setTimeout(() => setEditing({ subject }), 250);
+              }}
+            />
+          ) : null}
+        </SafeAreaProvider>
+      </Modal>
 
       <Modal visible={!!editing} animationType="slide" onRequestClose={() => setEditing(null)} statusBarTranslucent>
         <SafeAreaProvider>{editing ? <Editor subject={editing.subject} onClose={() => setEditing(null)} /> : null}</SafeAreaProvider>

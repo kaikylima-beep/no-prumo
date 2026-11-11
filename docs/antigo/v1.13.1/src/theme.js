@@ -4,7 +4,7 @@
 // O visual é escolhido antes do app carregar (index.js chama applyTheme), então os estilos
 // criados com StyleSheet já nascem com as cores certas. Trocar o visual reinicia o app.
 
-export const AREA_LABEL = { task: 'Tarefas', finance: 'Finanças', study: 'Estudos' };
+export const AREA_LABEL = { task: 'Tarefas', finance: 'Finanças', study: 'Estudos', grade: 'Nota', absence: 'Falta' };
 export const AREAS = ['task', 'finance', 'study'];
 
 // ---------- cores por área (uma cor por área, no app inteiro) ----------

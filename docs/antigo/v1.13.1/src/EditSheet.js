@@ -368,6 +368,13 @@ function BatchContent({ batch, onClose }) {
                 </Text>
               </Pressable>
             ) : null}
+            {meta.gap && !isCardDoc ? (
+              <Text style={st.accMeta}>
+                O extrato do banco não fecha por {formatMoney(Math.abs(meta.gap.amount))}: o saldo de {fmtD(meta.gap.date)} tem{' '}
+                {meta.gap.amount > 0 ? 'a mais' : 'a menos'} do que a soma dos lançamentos listados (costuma ser rendimento do dia que o banco
+                ainda não mostrou). Com o saldo do extrato marcado, o app fica igual ao banco.
+              </Text>
+            ) : null}
           </View>
         ) : null}
         {isFinance && holderRows.length ? (
@@ -429,7 +436,7 @@ function BatchContent({ batch, onClose }) {
                   <Text style={st.bMeta} numberOfLines={1}>
                     {date ? shortBR(date) : 'sem data'} ·{' '}
                     {transfer ? 'transferência entre suas contas' : r.category}
-                    {r.type === 'out' ? (r.essential ? ' · necessário' : ' · não necessário') : ''}
+                    {r.type === 'out' ? (r.category === 'Devolvido' ? ' · devolvido' : /^fatura\b/i.test(r.title || '') ? ' · fatura' : r.essential ? ' · necessário' : ' · não necessário') : ''}
                   </Text>
                   {r.hint ? <Text style={[st.bDup, { color: r.action === 'add' && transfer ? pal.main : tone.warn }]}>{r.hint}</Text> : null}
                   {!expanded ? <Text style={st.bEdit}>Toque para corrigir</Text> : null}

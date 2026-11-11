@@ -1,6 +1,7 @@
 // Orçamento do mês: renda, gastos necessários x não necessários, meta de guardar,
 // quanto ainda dá para gastar, projeção do fim do mês e avisos de gasto.
 import { showMoney as formatMoney, daysInMonth } from './utils';
+import { REFUND, isCardBill } from './financeFixes';
 
 // Gastos necessários por padrão (dá para trocar em cada lançamento)
 const ESSENTIAL_CATEGORIES = new Set(['Contas', 'Saúde', 'Estudos', 'Alimentação', 'Transporte']);
@@ -23,6 +24,9 @@ const sum = (list) => list.reduce((acc, t) => acc + (t.amount || 0), 0);
 // Entradas que são renda do trabalho; o resto é extra
 export const WORK_CATEGORIES = new Set(['Salário', 'Bônus']);
 export const isWorkIncome = (t) => t.type === 'in' && WORK_CATEGORIES.has(t.category);
+// 1.13: Pix devolvido (os dois lados) não é renda nem gasto; rendimento é investimento, não extra
+export const isRefund = (t) => t.category === REFUND;
+export const isExtraIncome = (t) => t.type === 'in' && !isWorkIncome(t) && !isRefund(t) && t.category !== 'Investimentos';
 
 // ym = 'AAAA-MM'. budget = { salary, target } (valores em reais ou null)
 // cash (opcional, 1.9.3): dinheiro de verdade que dá para usar no mês (contas + a receber − a pagar).
@@ -61,7 +65,7 @@ export function pendingPrompt(budget = {}, { ym, isCurrentMonth, ownAmount, adva
 // own (1.10): quanto veio de outras contas suas no mês (fromOtherAccounts). Só entra no limite se você disse
 // "usar no mês"; nunca vira renda nem salário.
 export function monthBudget(finance, budget = {}, ym, now = new Date(), cash = null, own = 0) {
-  const items = finance.filter((t) => t.date && t.date.startsWith(ym));
+  const items = finance.filter((t) => t.date && t.date.startsWith(ym) && !isRefund(t));
   const incomes = items.filter((t) => t.type === 'in');
   // transferências entre suas contas não são renda nem gasto
   const outs = items.filter((t) => t.type === 'out');
@@ -72,7 +76,7 @@ export function monthBudget(finance, budget = {}, ym, now = new Date(), cash = n
   // Extras (Pix de alguém, reembolso, rendimento) aparecem à parte e só entram no limite se você quiser:
   // assim um Pix que um amigo te devolveu não "aumenta" quanto você pode gastar.
   const work = incomes.filter(isWorkIncome);
-  const extras = incomes.filter((t) => !isWorkIncome(t));
+  const extras = incomes.filter(isExtraIncome);
   const hasSalaryEntry = work.some((t) => t.category === 'Salário');
   const salaryIncome = hasSalaryEntry ? sum(work) : salary + sum(work);
   const extraIncome = sum(extras);
@@ -85,6 +89,8 @@ export function monthBudget(finance, budget = {}, ym, now = new Date(), cash = n
   const extraList = outs.filter((t) => !isEssential(t));
   const essential = sum(essentialList);
   const nonEssential = sum(extraList);
+  // 1.13: a fatura paga junta gasto necessário e não necessário; aparece à parte (a conta não muda)
+  const cardBill = sum(extraList.filter(isCardBill));
 
   const allowance = income - essential - target; // o que sobra para os não necessários
   const byLimit = allowance - nonEssential;
@@ -127,7 +133,7 @@ export function monthBudget(finance, budget = {}, ym, now = new Date(), cash = n
 
   // passou do limite, mas o dinheiro da outra conta (fora do limite) cobre a diferença
   const covered = remaining < 0 && ownAmount > 0 && !ownIncome ? Math.round(Math.min(-remaining, ownAmount) * 100) / 100 : 0;
-  return { income, salaryIncome, extraIncome, ownAmount, ownIncome, ownChoice, covered, countExtras: !!budget.countExtras, essential, nonEssential, target, allowance, remaining, byLimit, capped, cash: cashValue, used, projectedExtra, projectedSaving, status, early, noSalary, configured: salary > 0 || income > 0 };
+  return { income, salaryIncome, extraIncome, ownAmount, ownIncome, ownChoice, covered, countExtras: !!budget.countExtras, essential, nonEssential, cardBill, target, allowance, remaining, byLimit, capped, cash: cashValue, used, projectedExtra, projectedSaving, status, early, noSalary, configured: salary > 0 || income > 0 };
 }
 
 // Aviso depois de lançar gastos (ou null). level = importância de Finanças

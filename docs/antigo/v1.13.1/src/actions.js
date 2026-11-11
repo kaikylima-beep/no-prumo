@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { toISO } from './utils';
 import { setReminderStyle, scheduleAt, cancelIds } from './reminders';
+import { academicOf, absenceSummary, absenceStatusText } from './academic';
 
 let Notifications = null;
 try {
@@ -79,7 +80,10 @@ export async function handleResponse(response) {
   const data = dataOf(response);
   const firedAt = new Date(response.notification.date || Date.now());
 
-  if (action === 'feito') await markDone(data, firedAt);
+  if (action === 'faltei') await markAbsent(data, settings);
+  else if (action === 'fui') {
+    // nada a guardar: a presença é o normal
+  } else if (action === 'feito') await markDone(data, firedAt);
   else if (action === 'pago') await markPaid(data);
   else if (action === 'adiar') await snooze(req.content || {}, data, new Date(Date.now() + SNOOZE_MINUTES * 60000));
   else if (action === 'amanha') {
@@ -118,6 +122,25 @@ async function markDone(data, firedAt) {
   }
   list[idx] = item;
   await writeJSON(key, list);
+}
+
+// 1.13: "Faltei" no aviso "Foi na aula?": guarda as faltas daquela aula (100 min = 2) e avisa se chegou perto do limite
+async function markAbsent(data, settings) {
+  if (!data.subjectId) return;
+  const list = await readJSON('@org2/subjects', []);
+  const idx = list.findIndex((x) => x.id === data.subjectId);
+  if (idx < 0) return;
+  const s = { ...list[idx] };
+  const absences = s.absences || [];
+  // o mesmo aviso tocado duas vezes não vira duas faltas
+  if (absences.some((a) => a.date === data.date && a.fromAlert && a.end === data.end)) return;
+  s.absences = [...absences, { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, date: data.date, count: Math.max(1, Number(data.count) || 1), fromAlert: true, end: data.end || null }];
+  list[idx] = s;
+  await writeJSON('@org2/subjects', list);
+  const sum = absenceSummary(s, academicOf(settings), settings.semester, (settings.profile || {}).state);
+  if (sum.status === 'near' || sum.status === 'over') {
+    await scheduleAt({ title: 'Estudos', body: `${s.name}: ${absenceStatusText(sum).toLowerCase()}.`, data: { kind: 'study' } }, new Date(Date.now() + 2000));
+  }
 }
 
 async function markPaid(data) {

@@ -1,42 +1,65 @@
-// Testes do interpretador de frases. Rode com: npm test
-// Copia src/utils.js e src/parser.js para uma pasta temporária com imports
-// compatíveis com o Node e confere frases reais contra o resultado esperado.
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
+// Testes da 1.13.1 (interpretador de frases, extrato, notas e faltas), rodando nos módulos que o
+// Prumo novo continua usando (src/legacy/). O resto (telas antigas) é lido do arquivo em
+// docs/antigo/v1.13.1/, só para estes testes continuarem de pé. Rode com: npm test
+import { existsSync, mkdtempSync, readFileSync as fsRead, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const OLD = join(REPO, 'docs/antigo/v1.13.1');
+// src/X.js: o módulo vivo em src/legacy, se existir; senão, o arquivo antigo
+const at = (p) => {
+  if (p.startsWith('node_modules') || p.startsWith('scripts/fixtures')) return join(REPO, p);
+  if (p.startsWith('src/') && !p.includes('/', 4) && existsSync(join(REPO, 'src/legacy', p.slice(4)))) return join(REPO, 'src/legacy', p.slice(4));
+  return join(OLD, p);
+};
+// os módulos vivos importam com ".js" (rodam direto no Node); aqui volta ao jeito antigo
+const readFileSync = (p, enc) => {
+  const t = fsRead(p, enc);
+  return typeof t === 'string' ? t.replace(/from '\.\/([\w]+)\.js'/g, "from './$1'") : t;
+};
+const root = REPO;
+// só mostra o que falhou e os placares
+const show = console.log;
+console.log = (...a) => {
+  if (!(typeof a[0] === 'string' && /^ok\s/.test(a[0]))) show(...a);
+};
+
 const dir = mkdtempSync(join(tmpdir(), 'parser-test-'));
-writeFileSync(join(dir, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
+writeFileSync(join(dir, 'utils.mjs'), readFileSync(at('src/utils.js'), 'utf8'));
 writeFileSync(
   join(dir, 'recurrence.mjs'),
-  readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'")
+  readFileSync(at('src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'")
 );
 writeFileSync(
   join(dir, 'greeting.mjs'),
-  readFileSync(join(root, 'src/greeting.js'), 'utf8')
+  readFileSync(at('src/greeting.js'), 'utf8')
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './recurrence'", "from './recurrence.mjs'")
 );
 writeFileSync(
   join(dir, 'budget.mjs'),
-  readFileSync(join(root, 'src/budget.js'), 'utf8').replace("from './utils'", "from './utils.mjs'")
+  readFileSync(at('src/budget.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './financeFixes'", "from './financeFixes.mjs'")
 );
 writeFileSync(
   join(dir, 'parser.mjs'),
-  readFileSync(join(root, 'src/parser.js'), 'utf8')
+  readFileSync(at('src/parser.js'), 'utf8')
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './recurrence'", "from './recurrence.mjs'")
+    .replace("from './normalize'", "from './normalize.mjs'")
 );
+writeFileSync(join(dir, 'normalize.mjs'), readFileSync(at('src/normalize.js'), 'utf8'));
+writeFileSync(join(dir, 'financeFixes.mjs'), readFileSync(at('src/financeFixes.js'), 'utf8'));
 writeFileSync(
   join(dir, 'documentParser.mjs'),
-  readFileSync(join(root, 'src/documentParser.js'), 'utf8')
+  readFileSync(at('src/documentParser.js'), 'utf8')
     .replace("from './parser'", "from './parser.mjs'")
-    .replace("from 'pako'", `from '${pathToFileURL(join(root, 'node_modules/pako/dist/pako.esm.mjs')).href}'`)
+    .replace("from './financeFixes'", "from './financeFixes.mjs'")
+    .replace("from 'pako'", `from '${pathToFileURL(at('node_modules/pako/dist/pako.esm.mjs')).href}'`)
 );
 const DP = await import(pathToFileURL(join(dir, 'documentParser.mjs')).href);
-writeFileSync(join(dir, 'accounts.mjs'), readFileSync(join(root, 'src/accounts.js'), 'utf8'));
+writeFileSync(join(dir, 'accounts.mjs'), readFileSync(at('src/accounts.js'), 'utf8'));
 const AC = await import(pathToFileURL(join(dir, 'accounts.mjs')).href);
 const { parseInput, planOffsets, wordsToNumbers, abbreviate } = await import(pathToFileURL(join(dir, 'parser.mjs')).href);
 const R = await import(pathToFileURL(join(dir, 'recurrence.mjs')).href);
@@ -44,7 +67,7 @@ const G = await import(pathToFileURL(join(dir, 'greeting.mjs')).href);
 const B = await import(pathToFileURL(join(dir, 'budget.mjs')).href);
 writeFileSync(
   join(dir, 'insights.mjs'),
-  readFileSync(join(root, 'src/insights.js'), 'utf8')
+  readFileSync(at('src/insights.js'), 'utf8')
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './budget'", "from './budget.mjs'")
     .replace("from './accounts'", "from './accounts.mjs'")
@@ -52,7 +75,7 @@ writeFileSync(
 const IN = await import(pathToFileURL(join(dir, 'insights.mjs')).href);
 writeFileSync(
   join(dir, 'itemForm.mjs'),
-  readFileSync(join(root, 'src/itemForm.js'), 'utf8')
+  readFileSync(at('src/itemForm.js'), 'utf8')
     .replace("from './utils'", "from './utils.mjs'")
     .replace("from './parser'", "from './parser.mjs'")
     .replace("from './recurrence'", "from './recurrence.mjs'")
@@ -387,7 +410,7 @@ offs.forEach(([got, exp], i) => {
 // ---- importar extrato, fatura e holerite (PDF e CSV)
 function checkDoc(file, expected, existing = []) {
   total++;
-  const bytes = new Uint8Array(readFileSync(join(root, 'scripts/fixtures', file)));
+  const bytes = new Uint8Array(readFileSync(at('scripts/fixtures/' + file)));
   const r = DP.parseDocument({ name: file, bytes }, TODAY, existing);
   const got = (r.items || []).map((i) => [i.date, i.type, i.amount, i.title, i.category, !!i.duplicate]);
   const ok = JSON.stringify(got) === JSON.stringify(expected);
@@ -736,8 +759,8 @@ checkDoc('fatura.csv', [
   // Bug 4: absoluteFillObject não existe no React Native 0.88 (no web existe, por isso passava)
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith('.js') ? [join(d, e.name)] : []));
   const code = (p) => readFileSync(p, 'utf8').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
-  ok('ninguém usa StyleSheet.absoluteFillObject', [...walk(join(root, 'src')), join(root, 'App.js')].filter((p) => /StyleSheet\.absoluteFillObject/.test(code(p))).length, 0);
-  ok('Tudo do mês cobre a tela', /wrap: \{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0/.test(readFileSync(join(root, 'src/components/MonthView.js'), 'utf8')), true);
+  ok('ninguém usa StyleSheet.absoluteFillObject', [...walk(at('src')), at('App.js')].filter((p) => /StyleSheet\.absoluteFillObject/.test(code(p))).length, 0);
+  ok('Tudo do mês cobre a tela', /wrap: \{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0/.test(readFileSync(at('src/components/MonthView.js'), 'utf8')), true);
 }
 
 // ---- 1.9.3: números que não enganam (valores fictícios, no formato do extrato do Itaú)
@@ -817,7 +840,7 @@ checkDoc('fatura.csv', [
   ok('tipo do documento: holerite x extrato', [DP.detectKind('Recibo de pagamento de salário Proventos Líquido a receber'), DP.detectKind(txt)], ['holerite', 'extrato']);
 
   // tela: nomes novos
-  const fs = readFileSync(join(root, 'src/screens/FinanceScreen.js'), 'utf8');
+  const fs = readFileSync(at('src/screens/FinanceScreen.js'), 'utf8');
   ok('cartão do mês tem os dois nomes', /Sobra do mês/.test(fs) && /Mudança no saldo/.test(fs) && /Veio de outras contas suas/.test(fs), true);
   ok('frase antiga de Recebimentos saiu', /não aumenta o que você tem/.test(fs), false);
 }
@@ -894,11 +917,11 @@ checkDoc('fatura.csv', [
   const txt = ['FULANO DE TAL 000.000.000-00 agência: 0001 conta: 012345-6', 'extrato conta / lançamentos', '06/11/2026 PIX TRANSF Fulano D06/11 100,00', '06/11/2026 PIX TRANSF Ciclano06/11 50,00', '06/11/2026 SALDO DO DIA 500,00'].join('\n');
   const st = DP.parseStatementText(txt, '2026-11-08');
   ok('Pix com o nome do titular fica marcado; de outra pessoa, não', st.items.map((i) => [i.type, !!i.holderPix]), [['transfer', true], ['in', false]]);
-  const es = readFileSync(join(root, 'src/EditSheet.js'), 'utf8');
+  const es = readFileSync(at('src/EditSheet.js'), 'utf8');
   ok('revisão pergunta de qual conta vêm os Pix com o seu nome', /De qual conta sua\?/.test(es) && /Não acompanho/.test(es) && /Cadastrar conta/.test(es), true);
   ok('importação com salário pede o "é o seu salário?"', /salaryAsk: \{ amount: sal\.amount/.test(es), true);
-  const fs = readFileSync(join(root, 'src/components/FinancePrompts.js'), 'utf8');
-  ok('pop-ups só com a aba Finanças aberta', /<Screen active=\{key === current\} \/>/.test(readFileSync(join(root, 'App.js'), 'utf8')) && (readFileSync(join(root, 'src/screens/FinanceScreen.js'), 'utf8').match(/\{active \? <FinancePrompts/g) || []).length === 2, true);
+  const fs = readFileSync(at('src/components/FinancePrompts.js'), 'utf8');
+  ok('pop-ups só com a aba Finanças aberta', /<Screen active=\{key === current\} \/>/.test(readFileSync(at('App.js'), 'utf8')) && (readFileSync(at('src/screens/FinanceScreen.js'), 'utf8').match(/\{active \? <FinancePrompts/g) || []).length === 2, true);
   ok('pop-ups com os botões combinados', ['Sim, recebo todo mês', 'Não, minha renda varia', 'Sim, usar no mês', 'Não, é reserva', 'Perguntar depois'].every((t) => fs.includes(t)), true);
 }
 
@@ -922,9 +945,9 @@ checkDoc('fatura.csv', [
   const variable = IN.monthForecast([], [acc], { salary: 2000, incomeType: 'variable' }, '2026-11', '2026-11-03');
   ok('previsto: renda fixa soma o salário que ainda vai cair', [fixed.salaryPending, fixed.value], [2000, 2100]);
   ok('previsto: renda que varia não soma salário incerto', [variable.salaryPending, variable.value], [0, 100]);
-  const fs = readFileSync(join(root, 'src/screens/FinanceScreen.js'), 'utf8');
+  const fs = readFileSync(at('src/screens/FinanceScreen.js'), 'utf8');
   ok('Finanças pergunta o salário que já está no app', /salaryToAsk\(settings\.budget, finance, today\)/.test(fs), true);
-  const fp = readFileSync(join(root, 'src/components/FinancePrompts.js'), 'utf8');
+  const fp = readFileSync(at('src/components/FinancePrompts.js'), 'utf8');
   ok('toda resposta do salário marca que já perguntou', (fp.match(/salaryAskSeen: true/g) || []).length >= 4, true);
 }
 
@@ -935,15 +958,15 @@ checkDoc('fatura.csv', [
     const same = JSON.stringify(got) === JSON.stringify(exp);
     if (!same) { fails++; console.log(`FALHOU  1.10.1: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.10.1: ${name}`);
   };
-  const rem = readFileSync(join(root, 'src/reminders.js'), 'utf8');
+  const rem = readFileSync(at('src/reminders.js'), 'utf8');
   ok('aviso de teste vem daqui a 5 s, como um lembrete de verdade', /PREVIEW_SECONDS = 5/.test(rem) && /TIME_INTERVAL, seconds, channelId: channelId\(\)/.test(rem), true);
-  const dr = readFileSync(join(root, 'src/Drawer.js'), 'utf8');
+  const dr = readFileSync(at('src/Drawer.js'), 'utf8');
   ok('Ajustes mostra a contagem no meio da tela', /<AlertPreview preview=\{preview\}/.test(dr) && /onPreview\(\{ style: v, seconds: PREVIEW_SECONDS/.test(dr), true);
-  const ap = readFileSync(join(root, 'src/components/AlertPreview.js'), 'utf8');
+  const ap = readFileSync(at('src/components/AlertPreview.js'), 'utf8');
   ok('contagem explica o "mostrar como pop-up" e abre os ajustes', /Mostrar como pop-up/.test(ap) && /Linking\.openSettings\(\)/.test(ap), true);
-  const eg = readFileSync(join(root, 'src/components/EntryGreeting.js'), 'utf8');
+  const eg = readFileSync(at('src/components/EntryGreeting.js'), 'utf8');
   ok('saudação e pendências aparecem juntas, sem atraso', !/setStep/.test(eg) && /entry\.messages\.map/.test(eg), true);
-  ok('saudação fica embaixo, não em cima do título', /EntryGreeting bottom=\{TAB_HEIGHT \+ insets\.bottom \+ 14\}/.test(readFileSync(join(root, 'App.js'), 'utf8')) && !/\{ top, opacity \}/.test(eg), true);
+  ok('saudação fica embaixo, não em cima do título', /EntryGreeting bottom=\{TAB_HEIGHT \+ insets\.bottom \+ 14\}/.test(readFileSync(at('App.js'), 'utf8')) && !/\{ top, opacity \}/.test(eg), true);
   ok('no máximo 2 mensagens na saudação', /MAX_MESSAGES = 2/.test(eg), true);
 }
 
@@ -969,7 +992,7 @@ export default {
   writeFileSync(join(dir, 'rnStub.mjs'), `export const Platform = { OS: 'test' };`);
   writeFileSync(
     join(dir, 'backup.mjs'),
-    readFileSync(join(root, 'src/backup.js'), 'utf8')
+    readFileSync(at('src/backup.js'), 'utf8')
       .replace("from '@react-native-async-storage/async-storage'", "from './asyncStub.mjs'")
       .replace("from 'react-native'", "from './rnStub.mjs'")
   );
@@ -1009,7 +1032,7 @@ export default {
   ok('depois de voltar, tudo é como antes', [JSON.parse(await AS.getItem('@org2/tasks'))[0].title, JSON.parse(await AS.getItem('@org2/study'))[0].title, JSON.parse(await AS.getItem('@org2/settings')).layout], ['Outra coisa', 'Prova', 'simple']);
   ok('a cópia é usada uma vez só', await BK.hasBeforeRestore(), false);
   ok('idade do backup em dias', [BK.backupAge(null), BK.backupAge('2026-11-01T12:00:00Z', new Date('2026-11-08T12:00:00Z'))], [null, 7]);
-  const dr = readFileSync(join(root, 'src/Drawer.js'), 'utf8');
+  const dr = readFileSync(at('src/Drawer.js'), 'utf8');
   ok('Ajustes tem a seção Backup com salvar, restaurar e voltar', /<BackupSection/.test(dr) && /Salvar backup/.test(dr) && /Voltar ao que eu tinha/.test(dr), true);
   ok('restaurar pede confirmação mostrando o que tem no backup', /Restaurar este backup\?/.test(dr), true);
   rmSync(dir, { recursive: true, force: true });
@@ -1018,12 +1041,13 @@ export default {
 // ---- 1.12: matérias, voz, ocupação, feriados e correções
 {
   const dir12 = mkdtempSync(join(tmpdir(), 'prumo-112-'));
-  writeFileSync(join(dir12, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
-  writeFileSync(join(dir12, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(dir12, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'"));
-  writeFileSync(join(dir12, 'subjects.mjs'), readFileSync(join(root, 'src/subjects.js'), 'utf8').replace("from './parser'", "from './parser.mjs'").replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(dir12, 'holidays.mjs'), readFileSync(join(root, 'src/holidays.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(dir12, 'theme.mjs'), readFileSync(join(root, 'src/theme.js'), 'utf8'));
+  writeFileSync(join(dir12, 'utils.mjs'), readFileSync(at('src/utils.js'), 'utf8'));
+  writeFileSync(join(dir12, 'recurrence.mjs'), readFileSync(at('src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(join(dir12, 'normalize.mjs'), readFileSync(at('src/normalize.js'), 'utf8'));
+  writeFileSync(join(dir12, 'parser.mjs'), readFileSync(at('src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'"));
+  writeFileSync(join(dir12, 'subjects.mjs'), readFileSync(at('src/subjects.js'), 'utf8').replace("from './parser'", "from './parser.mjs'").replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(join(dir12, 'holidays.mjs'), readFileSync(at('src/holidays.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(join(dir12, 'theme.mjs'), readFileSync(at('src/theme.js'), 'utf8'));
   const url = (f) => pathToFileURL(join(dir12, f)).href;
   const SB = await import(url('subjects.mjs'));
   const HD = await import(url('holidays.mjs'));
@@ -1165,16 +1189,16 @@ export default {
   ok('as 8 cores têm contraste nos dois temas', bad, []);
   ok('são 8 cores', TH.SUBJECT_COUNT, 8);
 
-  const rem12 = readFileSync(join(root, 'src/reminders.js'), 'utf8');
+  const rem12 = readFileSync(at('src/reminders.js'), 'utf8');
   ok('vibração: o aviso com o app aberto não sai mudo', /shouldPlaySound: true/.test(rem12) && !/shouldPlaySound: alertStyle/.test(rem12), true);
   ok('"Só vibração" continua sem som no canal', /CHANNELS\.vibrar[\s\S]{0,120}sound: null/.test(rem12), true);
-  const st12 = readFileSync(join(root, 'src/store.js'), 'utf8');
+  const st12 = readFileSync(at('src/store.js'), 'utf8');
   ok('microfone já ouvindo por padrão e para quem já tinha o app', /autoListen: true/.test(st12) && /autoListenSet: true/.test(st12), true);
-  const bk12 = readFileSync(join(root, 'src/backup.js'), 'utf8');
+  const bk12 = readFileSync(at('src/backup.js'), 'utf8');
   ok('backup leva as matérias', /'@org2\/subjects'/.test(bk12), true);
-  const sc12 = readFileSync(join(root, 'src/screens/StudyScreen.js'), 'utf8');
+  const sc12 = readFileSync(at('src/screens/StudyScreen.js'), 'utf8');
   ok('Estudos tem as abas Itens e Matérias', /key: 'itens'/.test(sc12) && /key: 'materias'/.test(sc12), true);
-  ok('Agenda mostra feriados', /holidaysOfMonth/.test(readFileSync(join(root, 'src/screens/CalendarScreen.js'), 'utf8')), true);
+  ok('Agenda mostra feriados', /holidaysOfMonth/.test(readFileSync(at('src/screens/CalendarScreen.js'), 'utf8')), true);
   rmSync(dir12, { recursive: true, force: true });
 }
 
@@ -1182,10 +1206,11 @@ export default {
 // ---------- 1.12.1: voz que entende ----------
 {
   const d = mkdtempSync(join(tmpdir(), 'prumo-1121-'));
-  writeFileSync(join(d, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
-  writeFileSync(join(d, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
-  writeFileSync(join(d, 'parser.mjs'), readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'"));
-  writeFileSync(join(d, 'voice.mjs'), readFileSync(join(root, 'src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
+  writeFileSync(join(d, 'utils.mjs'), readFileSync(at('src/utils.js'), 'utf8'));
+  writeFileSync(join(d, 'recurrence.mjs'), readFileSync(at('src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(join(d, 'normalize.mjs'), readFileSync(at('src/normalize.js'), 'utf8'));
+  writeFileSync(join(d, 'parser.mjs'), readFileSync(at('src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'"));
+  writeFileSync(join(d, 'voice.mjs'), readFileSync(at('src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
   const P = await import(pathToFileURL(join(d, 'parser.mjs')).href);
   const V = await import(pathToFileURL(join(d, 'voice.mjs')).href);
   rmSync(d, { recursive: true, force: true });
@@ -1256,15 +1281,15 @@ export default {
   ok('vocabulário até 100', vocab.length <= 100, true);
 
   // código
-  const sp = readFileSync(join(root, 'src/speech.js'), 'utf8');
+  const sp = readFileSync(at('src/speech.js'), 'utf8');
   ok('pede pontuação, vocabulário e 5 versões', /addsPunctuation/.test(sp) && /contextualStrings/.test(sp) && /maxAlternatives:\s*5/.test(sp), true);
   ok('volta ao modo simples se o aparelho recusar', /LEVELS/.test(sp), true);
-  const cm = readFileSync(join(root, 'src/CaptureModal.js'), 'utf8');
+  const cm = readFileSync(at('src/CaptureModal.js'), 'utf8');
   ok('"Guardar para correção" avisa na própria tela (o Toast fica atrás do Modal)', !/showToast\('Frase guardada/.test(cm) && /Frase guardada/.test(cm), true);
   ok('o que foi ouvido pode ser corrigido', /Entender de novo/.test(cm), true);
-  const ut = readFileSync(join(root, 'src/utils.js'), 'utf8');
+  const ut = readFileSync(at('src/utils.js'), 'utf8');
   ok('ocultar saldo troca o valor', /R\$ ••••/.test(ut), true);
-  const stx = readFileSync(join(root, 'src/store.js'), 'utf8');
+  const stx = readFileSync(at('src/store.js'), 'utf8');
   ok('ocultar saldo fica lembrado', /hideBalance/.test(stx), true);
 }
 
@@ -1278,15 +1303,15 @@ export default {
       console.log(`FALHOU  1.12.2: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`);
     } else console.log(`ok      1.12.2: ${name}`);
   };
-  const dr = readFileSync(join(root, 'src/Drawer.js'), 'utf8');
+  const dr = readFileSync(at('src/Drawer.js'), 'utf8');
   ok('ocupação e estado ficam em "Ajustar perfil"', /Ajustar perfil/.test(dr) && /aboutOpen \? \(/.test(dr), true);
   ok('enviar frases só no modo de teste', /settings\.testMode \? \(/.test(dr) && !/Enviar para correção/.test(dr), true);
   ok('5 toques na versão ligam o modo de teste', /taps\.current\.n >= 5/.test(dr), true);
-  const cm = readFileSync(join(root, 'src/CaptureModal.js'), 'utf8');
+  const cm = readFileSync(at('src/CaptureModal.js'), 'utf8');
   ok('tocar no texto ouvido corrige', /Toque no texto para corrigir/.test(cm), true);
   ok('"Guardar para correção" só no modo de teste', /!settings\.testMode \? null/.test(cm), true);
   ok('modo de teste guarda sozinho o que foi corrigido', /settings\.testMode && \(corrected/.test(cm), true);
-  const es = readFileSync(join(root, 'src/EditSheet.js'), 'utf8');
+  const es = readFileSync(at('src/EditSheet.js'), 'utf8');
   ok('corrigir o nome de um item falado ensina o app', /learnVoice\(diffWords\(item\.title/.test(es), true);
 }
 
@@ -1320,16 +1345,17 @@ check('paguei a luz 120', [{ kind: 'finance', amount: 120, status: 'paid' }]);
     if (!same) { fails++; console.log(`FALHOU  1.12.3: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.12.3: ${name}`);
   };
   const d3 = mkdtempSync(join(tmpdir(), 'v1123-'));
-  writeFileSync(join(d3, 'utils.mjs'), readFileSync(join(root, 'src/utils.js'), 'utf8'));
-  writeFileSync(join(d3, 'recurrence.mjs'), readFileSync(join(root, 'src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
+  writeFileSync(join(d3, 'utils.mjs'), readFileSync(at('src/utils.js'), 'utf8'));
+  writeFileSync(join(d3, 'recurrence.mjs'), readFileSync(at('src/recurrence.js'), 'utf8').replace("from './utils'", "from './utils.mjs'"));
   writeFileSync(
     join(d3, 'parser.mjs'),
-    readFileSync(join(root, 'src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'")
+    readFileSync(at('src/parser.js'), 'utf8').replace("from './utils'", "from './utils.mjs'").replace("from './recurrence'", "from './recurrence.mjs'").replace("from './normalize'", "from './normalize.mjs'")
   );
+  writeFileSync(join(d3, 'normalize.mjs'), readFileSync(at('src/normalize.js'), 'utf8'));
   writeFileSync(join(d3, 'rnStub.mjs'), `export const Platform = { OS: 'test' };`);
   writeFileSync(
     join(d3, 'reminders.mjs'),
-    readFileSync(join(root, 'src/reminders.js'), 'utf8')
+    readFileSync(at('src/reminders.js'), 'utf8')
       .replace("from 'react-native'", "from './rnStub.mjs'")
       .replace("from './parser'", "from './parser.mjs'")
       .replace("from './utils'", "from './utils.mjs'")
@@ -1343,7 +1369,7 @@ check('paguei a luz 120', [{ kind: 'finance', amount: 120, status: 'paid' }]);
   ok('"Ocultar valores" tira o valor do aviso', RM.bodyFor('finance', luz, 1), 'Vence amanhã: Conta de luz');
   ok('"Ocultar valores" vale para o que vai entrar', RM.bodyFor('finance', { ...luz, type: 'in', title: 'Salário' }, 0), 'Hoje: receber Salário');
   RM.setHideMoney(false);
-  const st = readFileSync(join(root, 'src/store.js'), 'utf8');
+  const st = readFileSync(at('src/store.js'), 'utf8');
   ok('ligar "Ocultar valores" refaz os avisos de Finanças', /setHideMoney\(!!v\);[\s\S]{0,120}rescheduleKind\('finance'\)/.test(st), true);
 
   // restaurar refaz os avisos (módulo de avisos de mentira)
@@ -1359,7 +1385,7 @@ export default {
 };`);
   writeFileSync(
     join(d3, 'backup.mjs'),
-    readFileSync(join(root, 'src/backup.js'), 'utf8')
+    readFileSync(at('src/backup.js'), 'utf8')
       .replace("from '@react-native-async-storage/async-storage'", "from './asyncStub.mjs'")
       .replace("from 'react-native'", "from './rnStub.mjs'")
   );
@@ -1394,7 +1420,7 @@ export default {
   ok('voltar ao que havia também refaz os avisos', [back[0].id, log.canceled, back[0].notifIds.length], ['velha', 2, 1]);
   ok('sem o módulo de avisos, restaurar continua funcionando', await BK.remakeReminders(null), false);
   // Bixby: com o Google instalado, o app escolhe o Google pelo nome
-  writeFileSync(join(d3, 'voice.mjs'), readFileSync(join(root, 'src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
+  writeFileSync(join(d3, 'voice.mjs'), readFileSync(at('src/voice.js'), 'utf8').replace("from './parser'", "from './parser.mjs'"));
   const VO = await import(pathToFileURL(join(d3, 'voice.mjs')).href);
   const samsung = ['com.samsung.android.bixby.agent', 'com.google.android.tts', 'com.google.android.googlequicksearchbox'];
   ok('Samsung com Google: "no celular" usa o Google, de preferência sem internet', VO.pickService(samsung, true), { pkg: 'com.google.android.tts', offline: true });
@@ -1402,13 +1428,327 @@ export default {
   ok('com o reconhecimento do Google no aparelho, ele vem primeiro', VO.pickService(['com.google.android.as', ...samsung], true), { pkg: 'com.google.android.as', offline: true });
   ok('só o app do Google: usa ele', VO.pickService(['com.google.android.googlequicksearchbox'], false), { pkg: 'com.google.android.googlequicksearchbox', offline: false });
   ok('sem Google: fica o serviço do sistema', VO.pickService(['com.samsung.android.bixby.agent'], true), null);
-  const sp = readFileSync(join(root, 'src/speech.js'), 'utf8');
+  const sp = readFileSync(at('src/speech.js'), 'utf8');
   ok('o pedido ao Android leva o serviço escolhido', /androidRecognitionServicePackage: svc\.pkg/.test(sp) && /requiresOnDeviceRecognition: !!L\.onDevice && !svc/.test(sp), true);
-  const appj = JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'));
+  const appj = JSON.parse(readFileSync(at('app.json'), 'utf8'));
   const sr = appj.expo.plugins.find((x) => Array.isArray(x) && x[0] === 'expo-speech-recognition');
   ok('o app enxerga os serviços de voz do Google', ['com.google.android.tts', 'com.google.android.as', 'com.google.android.googlequicksearchbox'].every((x) => sr[1].androidSpeechServicePackages.includes(x)), true);
   rmSync(d3, { recursive: true, force: true });
 }
 
-console.log(`\n${total - fails}/${total} passaram`);
+// ---- 1.13: Finanças mais limpo (dados inventados)
+{
+  const ok = (name, got, exp) => {
+    total++;
+    const same = JSON.stringify(got) === JSON.stringify(exp);
+    if (!same) { fails++; console.log(`FALHOU  1.13 finanças: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.13 finanças: ${name}`);
+  };
+  const d4 = mkdtempSync(join(tmpdir(), 'fin113-'));
+  writeFileSync(join(d4, 'ff.mjs'), readFileSync(at('src/financeFixes.js'), 'utf8'));
+  const FF = await import(pathToFileURL(join(d4, 'ff.mjs')).href);
+  rmSync(d4, { recursive: true, force: true });
+  ok('título sem data grudada e sem código do banco', ['Rscss Transp Colet0711', 'Rscss Cidadao do M0610', 'Mercado Bom Preço', 'Pix de Caio23/09'].map(FF.cleanImportTitle), ['Transp Colet', 'Cidadao do M', 'Mercado Bom Preço', 'Pix de Caio']);
+  const fin = [
+    { id: 'a', type: 'in', title: 'Pix de Caio Au', amount: 75, date: '2026-10-12', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'b', type: 'out', title: 'Dev Pix Caio August', amount: 75, date: '2026-10-13', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'c', type: 'in', title: 'Pix de Bia', amount: 75, date: '2026-10-01', category: 'Outros', account: 'c1', importId: 'i' },
+    { id: 'd', type: 'in', title: 'Rend Pago Aplic Aut Mais', amount: 0.5, date: '2026-10-06', category: 'Outros', importId: 'i' },
+    { id: 'e', type: 'out', title: 'Juros Limite da Conta', amount: 2, date: '2026-11-03', category: 'Contas', essential: true, importId: 'i' },
+    { id: 'f', type: 'out', title: 'Fatura do cartão', amount: 400, date: '2026-11-06', category: 'Cartão', essential: false, importId: 'i' },
+    { id: 'g', type: 'out', title: 'Rscss Transp Colet0711', amount: 6, date: '2026-11-07', category: 'Outros', importId: 'i' },
+    { id: 'h', type: 'out', title: 'Mercado', amount: 50, date: '2026-11-07', category: 'Alimentação' }, // à mão: não muda
+  ];
+  const ch = FF.migrate113(fin);
+  ok('Pix devolvido: a devolução liga ao Pix que voltou (o mais perto)', [ch.a, ch.b], [{ category: 'Devolvido', refundPair: 'b' }, { category: 'Devolvido', essential: null, title: 'Pix devolvido para Caio August', refundPair: 'a' }]);
+  ok('outro Pix de mesmo valor, mais antigo, fica como está', ch.c, undefined);
+  ok('rendimento vira Investimentos', ch.d, { category: 'Investimentos', title: 'Rendimento' });
+  ok('juros viram "Tarifas e juros", sem marca de necessário', ch.e, { category: 'Tarifas e juros', essential: null });
+  ok('fatura paga fica sem marca', ch.f, { essential: null });
+  ok('transporte coletivo vira Transporte com nome limpo', ch.g, { title: 'Transp Colet', category: 'Transporte', essential: null });
+  ok('lançamento feito à mão não é tocado', ch.h, undefined);
+  const after = fin.map((t) => (ch[t.id] ? { ...t, ...ch[t.id] } : t));
+  ok('segunda passada não muda mais nada', FF.refundChanges(after), {});
+  // orçamento e recebimentos
+  const ym = '2026-10';
+  const m = B.monthBudget(after.concat([{ id: 's', type: 'in', category: 'Salário', title: 'Salário', amount: 2000, date: '2026-10-05' }]), { target: 0 }, ym, new Date(2026, 9, 31));
+  ok('Pix devolvido e rendimento não são extras; o outro Pix é', m.extraIncome, 75);
+  ok('Pix devolvido não é gasto', m.essential + m.nonEssential, 0);
+  const nov = B.monthBudget(after, { salary: 2000 }, '2026-11', new Date(2026, 10, 30));
+  ok('fatura aparece à parte (a conta não muda)', [nov.cardBill, nov.nonEssential >= nov.cardBill], [400, true]);
+  ok('recebimentos: devolvido e rendimento ficam fora', [IN.incomeKind(after[0]), IN.incomeKind(after[3]), IN.incomeKind(after[2])], [null, null, 'extra']);
+  // categoria aprendida
+  ok('o mesmo nome que você já classificou ganha a mesma categoria (mesmo com o código do banco)', FF.learnedCategory('PAY KENNE 23/10', 'out', [{ type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, createdAt: 1 }]), { category: 'Alimentação', essential: true });
+  ok('nome genérico não aprende', FF.learnedCategory('Compra no débito', 'out', [{ type: 'out', title: 'Compra no débito', category: 'Lazer', createdAt: 1 }]), null);
+  ok('categoria aprendida pelo nome limpo', FF.learnedCategory('Kenne', 'out', [{ type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, createdAt: 1 }]), { category: 'Alimentação', essential: true });
+  // importação de um CSV inventado
+  const csv = ['Data;Descrição;Valor', '12/10/2026;PIX TRANSF CAIO AU12/10;75,00', '13/10/2026;DEV PIX Caio August12/10;-75,00', '06/10/2026;REND PAGO APLIC AUT MAIS;0,50', '03/11/2026;JUROS LIMITE DA CONTA;-2,00', '07/11/2026;RSCSS TRANSP COLET0711;-6,13', '07/11/2026;PAY KENNE 07/11;-32,70'].join('\n');
+  const imp = DP.parseDocument({ name: 'extrato.csv', mimeType: 'text/csv', bytes: new TextEncoder().encode(csv) }, '2026-11-08', [{ id: 'k', type: 'out', title: 'Kenne', category: 'Alimentação', essential: true, date: '2026-10-23', amount: 11 }]);
+  const pick = (re) => imp.items.find((r) => re.test(r.title || '')) || {};
+  ok('importação: Pix devolvido e o Pix que voltou chegam como Devolvido', [pick(/^Pix devolvido/).category, pick(/^Pix de Caio/).category], ['Devolvido', 'Devolvido']);
+  ok('importação: rendimento', [pick(/^Rendimento/).category], ['Investimentos']);
+  ok('importação: juros em "Tarifas e juros"', pick(/^Juros/).category, 'Tarifas e juros');
+  ok('importação: transporte coletivo com nome limpo', [pick(/Transp/).title, pick(/Transp/).category], ['Transp Colet', 'Transporte']);
+  ok('importação: compra numa loja que você já classificou', [pick(/^Kenne/).category], ['Alimentação']);
+  const fs1 = readFileSync(at('src/screens/FinanceScreen.js'), 'utf8');
+  ok('topo do Avançado: "Mudança no saldo" saiu da tela', /sumLabel\}>Mudança no saldo/.test(fs1), false);
+  ok('topo do Avançado: "Previsto" não repete o "Ainda pode gastar" cortado', /!\(hasBudget && !bud\.noSalary && bud\.capped\)/.test(fs1), true);
+}
+
+// ---- 1.13: notas e faltas (dados inventados)
+{
+  const ok = (name, got, exp) => {
+    total++;
+    const same = JSON.stringify(got) === JSON.stringify(exp);
+    if (!same) { fails++; console.log(`FALHOU  1.13 notas e faltas: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`); } else console.log(`ok      1.13 notas e faltas: ${name}`);
+  };
+  const d5 = mkdtempSync(join(tmpdir(), 'acad113-'));
+  const cp = (src, dst, reps = []) => writeFileSync(join(d5, dst), reps.reduce((t, [a, b]) => t.split(a).join(b), readFileSync(at(src), 'utf8')));
+  cp('src/utils.js', 'utils.mjs');
+  cp('src/recurrence.js', 'recurrence.mjs', [["from './utils'", "from './utils.mjs'"]]);
+  cp('src/normalize.js', 'normalize.mjs');
+  cp('src/parser.js', 'parser.mjs', [["from './utils'", "from './utils.mjs'"], ["from './recurrence'", "from './recurrence.mjs'"], ["from './normalize'", "from './normalize.mjs'"]]);
+  cp('src/subjects.js', 'subjects.mjs', [["from './parser'", "from './parser.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
+  cp('src/holidays.js', 'holidays.mjs', [["from './utils'", "from './utils.mjs'"]]);
+  cp('src/academic.js', 'academic.mjs', [["from './parser'", "from './parser.mjs'"], ["from './subjects'", "from './subjects.mjs'"], ["from './holidays'", "from './holidays.mjs'"], ["from './utils'", "from './utils.mjs'"]]);
+  const AD = await import(pathToFileURL(join(d5, 'academic.mjs')).href);
+  rmSync(d5, { recursive: true, force: true });
+  const A = { ...AD.DEFAULT_ACADEMIC };
+  ok('aula de 100 min com aula de 50 = 2 aulas', AD.lessonsInBlock('07:30', '09:10', 50), 2);
+  ok('aula de 50 min = 1', AD.lessonsInBlock('10:00', '10:50', 50), 1);
+  ok('faculdade com aula de 60 min', AD.lessonsInBlock('08:00', '10:00', 60), 2);
+  // Cálculo: segunda 07:30–09:10 (2 aulas) e quarta 10:00–10:50 (1 aula)
+  const calc = { id: 'c', name: 'Cálculo 2', aliases: ['calc 2'], schedules: [{ days: [1], start: '07:30', end: '09:10' }, { days: [3], start: '10:00', end: '10:50' }], grades: [], absences: [] };
+  const fis = { id: 'f', name: 'Física 1', aliases: [], schedules: [{ days: [1], start: '13:00', end: '14:40' }], grades: [], absences: [] };
+  ok('aulas num dia: segunda tem 2 de Cálculo', AD.lessonsOn(calc, '2026-11-09', 50), 2);
+  ok('aulas num dia: terça não tem', AD.lessonsOn(calc, '2026-11-10', 50), 0);
+  // semestre de 4 semanas, sem feriado: 4 segundas (2) + 4 quartas (1) = 12
+  const sem = { start: '2026-08-03', end: '2026-08-30' };
+  ok('total de aulas do semestre pelos horários', AD.semesterLessons(calc, sem, 50, null), 12);
+  ok('feriado não conta como aula (07/09 é segunda)', AD.semesterLessons(calc, { start: '2026-09-07', end: '2026-09-13' }, 50, null), 1);
+  ok('sem semestre: sem total', AD.semesterLessons(calc, null, 50), null);
+  const withAbs = { ...calc, absences: [{ id: 'x', date: '2026-08-03', count: 2 }] };
+  ok('limite de 25%: 12 aulas → 3 faltas; faltou 2 → pode mais 1 (perto)', AD.absenceSummary(withAbs, A, sem, null), { count: 2, total: 12, limit: 3, left: 1, status: 'near' });
+  ok('texto do limite', AD.absenceStatusText(AD.absenceSummary(withAbs, A, sem, null)), 'Pode faltar mais 1 aula');
+  ok('passou do limite', AD.absenceSummary({ ...calc, absences: [{ count: 2 }, { count: 2 }] }, A, sem, null).status, 'over');
+  ok('limite configurável (30%)', AD.absenceSummary(withAbs, { ...A, absencePct: 30 }, sem, null).limit, 3);
+  // notas com peso: P1 40%, P2 40%, trabalho 20%
+  const g = { ...calc, grades: [{ id: 1, name: 'P1', score: 5, weight: 40 }, { id: 2, name: 'Trabalho', score: 8, weight: 20 }, { id: 3, name: 'P2', score: null, weight: 40 }] };
+  const gs = AD.gradeSummary(g, A);
+  ok('média com peso do que já saiu', gs.average, 6);
+  ok('quanto falta na P2 para média 6', [gs.needed, gs.status], [6, 'needs']);
+  ok('média para passar configurável (7)', AD.gradeSummary(g, { ...A, passGrade: 7 }).needed, 8.5);
+  ok('impossível: precisaria de mais que 10', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 0, weight: 80 }, { name: 'P2', score: null, weight: 20 }] }, A).status, 'impossible');
+  ok('todas as notas: média final e passou', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 7, weight: 1 }, { name: 'P2', score: 6, weight: 1 }] }, A), { graded: 2, total: 2, withWeights: true, average: 6.5, needed: null, status: 'passed' });
+  ok('sem pesos: só mostra as notas, sem média inventada', AD.gradeSummary({ ...g, grades: [{ name: 'P1', score: 7 }, { name: 'P2', score: 6 }] }, A).average, null);
+  ok('lista valendo 2: nota 1,5 vira 7,5 de 10', AD.gradeSummary({ ...g, grades: [{ name: 'Lista', score: 1.5, max: 2, weight: 1 }] }, A).average, 7.5);
+  ok('nota "7 e meio"', AD.parseGrade('7 e meio'), 7.5);
+  // voz
+  const subs = [calc, fis];
+  const v1 = AD.parseAcademic('tirei 7,5 na P1 de calc 2', subs, '2026-11-09', A);
+  ok('voz: "tirei 7,5 na P1 de calc 2"', v1.map((x) => [x.kind, x.subjectId, x.title, x.score]), [['grade', 'c', 'P1', 7.5]]);
+  ok('voz: "tirei 8 no trabalho de física 1"', AD.parseAcademic('tirei 8 no trabalho de física 1', subs, '2026-11-09', A).map((x) => [x.subjectId, x.title, x.score]), [['f', 'Trabalho', 8]]);
+  ok('voz: "tirei 50 reais no caixa" não é nota', AD.parseAcademic('tirei 50 reais no caixa', subs, '2026-11-09', A), []);
+  ok('voz: "tirei a roupa do varal" não é nota', AD.parseAcademic('tirei a roupa do varal', subs, '2026-11-09', A), []);
+  ok('voz: "faltei na aula de física" (segunda, 100 min = 2 faltas)', AD.parseAcademic('faltei na aula de física', subs, '2026-11-09', A).map((x) => [x.kind, x.subjectId, x.count, x.date]), [['absence', 'f', 2, '2026-11-09']]);
+  ok('voz: "faltei hoje" = todas as aulas do dia', AD.parseAcademic('faltei hoje', subs, '2026-11-09', A).map((x) => [x.subjectId, x.count]), [['c', 2], ['f', 2]]);
+  ok('voz: "faltei ontem na aula de cálculo 2" (domingo: sem aula, conta 1)', AD.parseAcademic('faltei ontem na aula de cálculo 2', subs, '2026-11-09', A).map((x) => [x.subjectId, x.date, x.count]), [['c', '2026-11-08', 1]]);
+  ok('voz: "não fui na aula de física"', AD.parseAcademic('não fui na aula de física', subs, '2026-11-09', A).map((x) => x.subjectId), ['f']);
+  ok('frase comum não é de nota nem falta', [AD.isAcademicStart('lavar o carro'), AD.isAcademicStart('faltei na aula'), AD.isAcademicStart('Tirei 9 na prova')], [false, true, true]);
+  // "Já saiu a nota?"
+  const study = [
+    { id: 's1', title: 'Prova de cálculo', subjectId: 'c', date: '2026-11-05' },
+    { id: 's2', title: 'Estudar cálculo', subjectId: 'c', date: '2026-11-05' },
+    { id: 's3', title: 'Prova de física', subjectId: 'f', date: '2026-11-20' },
+    { id: 's4', title: 'P2 de cálculo', subjectId: 'c', date: '2026-11-06', gradeAsked: true },
+  ];
+  ok('"Já saiu a nota?": só provas que já passaram e ainda sem nota', AD.gradesToAsk(study, subs, '2026-11-09').map((t) => t.id), ['s1']);
+  ok('com a nota lançada, não pergunta mais', AD.gradesToAsk(study, [{ ...calc, grades: [{ studyId: 's1', score: 7 }] }, fis], '2026-11-09').map((t) => t.id), []);
+  // aviso "Foi na aula?"
+  const ends = AD.upcomingClassEnds([fis], { start: '2026-08-01', end: '2026-12-15' }, A, null, new Date(2026, 10, 9, 12, 0), 7);
+  ok('aviso depois da aula: segunda 14:45 (5 min depois do fim)', ends.map((e) => [e.date, e.end, e.count, e.at.getHours(), e.at.getMinutes()]), [['2026-11-09', '14:40', 2, 14, 45], ['2026-11-16', '14:40', 2, 14, 45]]);
+}
+
+
+// ---------- 1.13.1: fala natural (normalização, datas e horas faladas, vários pedidos, versões e pausas) ----------
+{
+  const d = mkdtempSync(join(tmpdir(), 'prumo-1131-'));
+  const cp = (name, deps = []) => {
+    let src = readFileSync(at(`src/${name}.js`), 'utf8');
+    deps.forEach((dep) => (src = src.replace(`from './${dep}'`, `from './${dep}.mjs'`)));
+    writeFileSync(join(d, `${name}.mjs`), src);
+  };
+  cp('utils');
+  cp('recurrence', ['utils']);
+  cp('normalize');
+  cp('parser', ['utils', 'recurrence', 'normalize']);
+  cp('voice', ['parser']);
+  const P = await import(pathToFileURL(join(d, 'parser.mjs')).href);
+  const N = await import(pathToFileURL(join(d, 'normalize.mjs')).href);
+  const V = await import(pathToFileURL(join(d, 'voice.mjs')).href);
+  rmSync(d, { recursive: true, force: true });
+  const { VOICE_BANK, BANK_DAY, BANK_NOW } = await import(pathToFileURL(at('scripts/fixtures/banco-voz.mjs')).href);
+  const ok = (name, got, exp) => {
+    total++;
+    if (JSON.stringify(got) !== JSON.stringify(exp)) {
+      fails++;
+      console.log(`FALHOU  1.13.1: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`);
+    } else console.log(`ok      1.13.1: ${name}`);
+  };
+  const NOW2 = new Date(...BANK_NOW);
+
+  // Banco de fala natural: cada frase é um teste. As marcadas 'aberta' contam só no placar.
+  const by = {};
+  let right = 0;
+  let stillOpen = 0;
+  VOICE_BANK.forEach(([group, phrase, expected, open]) => {
+    const got = P.parseInput(phrase, BANK_DAY, NOW2);
+    const problems = [];
+    if (got.length !== expected.length) problems.push(`esperava ${expected.length} item(ns), veio ${got.length}`);
+    expected.forEach((exp, i) => {
+      const g = got[i] || {};
+      for (const [k, v] of Object.entries(exp)) {
+        const gv = k.split('.').reduce((o, part) => (o == null ? undefined : o[part]), g);
+        if (JSON.stringify(gv ?? null) !== JSON.stringify(v)) problems.push(`item ${i + 1}.${k}: esperava ${JSON.stringify(v)}, veio ${JSON.stringify(gv ?? null)}`);
+      }
+    });
+    by[group] = by[group] || [0, 0];
+    by[group][1]++;
+    if (!problems.length) {
+      right++;
+      by[group][0]++;
+    }
+    if (open) {
+      if (problems.length) stillOpen++;
+      else console.log(`        (frase aberta que já passa, pode fechar: "${phrase}")`);
+      return;
+    }
+    total++;
+    if (problems.length) {
+      fails++;
+      console.log(`FALHOU  fala: "${phrase}"`);
+      problems.forEach((x) => console.log('        ' + x));
+    } else console.log(`ok      fala: "${phrase}"`);
+  });
+  console.log(`        placar da fala natural: ${right}/${VOICE_BANK.length} certas sem editar (${Object.entries(by).map(([g, [a, b]]) => `${g} ${a}/${b}`).join(', ')}; ${stillOpen} abertas)`);
+  ok('placar da fala natural: pelo menos 95%', right / VOICE_BANK.length >= 0.95, true);
+
+  // 1) arrumar a fala
+  ok('vícios de fala saem', N.cleanSpeech('é então eu preciso tipo lavar o carro amanhã né'), 'eu preciso lavar o carro amanhã');
+  ok('pedido ao app sai', [N.cleanSpeech('anota aí comprar pão'), N.cleanSpeech('cria um lembrete pra tomar remédio'), N.cleanSpeech('eu queria que você me lembrasse de pagar a luz')], ['comprar pão', 'tomar remédio', 'pagar a luz']);
+  ok('palavra repetida sai', N.cleanSpeech('eu eu preciso preciso ligar pro João'), 'eu preciso ligar pro João');
+  ok('"um tipo de arroz" fica', N.cleanSpeech('comprar um tipo de arroz'), 'comprar um tipo de arroz');
+  ok('"assim que eu acordar" fica', N.cleanSpeech('assim que eu acordar tomar o remédio'), 'assim que eu acordar tomar o remédio');
+  ok('"coloca gasolina" é tarefa, não pedido ao app', N.cleanSpeech('coloca gasolina no carro'), 'coloca gasolina no carro');
+  ok('"1.800,00" não é fim de frase', N.cleanSpeech('cartão R$ 1.800,00 e Nubank 900'), 'cartão R$ 1.800,00 e Nubank 900');
+  ok('correção dita na hora: dia', N.canonSpeech('lavar o carro amanhã não sexta'), 'lavar o carro sexta');
+  ok('correção dita na hora: hora', N.canonSpeech('reunião às 3 não às 4 da tarde'), 'reunião às 4 da tarde');
+  ok('correção dita na hora: valor', N.canonSpeech('gastei 50 quer dizer 60 no mercado'), 'gastei 60 no mercado');
+  ok('"hoje não posso" não é correção', N.canonSpeech('hoje não posso ir'), 'hoje não posso ir');
+  ok('"3 e meia" vira 3:30', N.canonSpeech('reunião às 3 e meia da tarde'), 'reunião às 3:30 da tarde');
+  ok('"15 para as 8" vira 7:45', N.canonSpeech('ligar 15 para as 8 da noite'), 'ligar às 7:45 da noite');
+  ok('"meio-dia e meia" vira 12:30', N.canonSpeech('reunião ao meio-dia e meia'), 'reunião às 12:30');
+  ok('"2 horas e meia" é duração', N.canonSpeech('estudar 2 horas e meia'), 'estudar 2 horas e meia');
+  ok('"12 e 50" sem contexto de hora é dinheiro', N.canonSpeech('gastei 12 e 50'), 'gastei 12 e 50');
+  ok('"15 para as 3 contas" não é hora', N.canonSpeech('transferir 15 para as 3 contas'), 'transferir 15 para as 3 contas');
+  ok('"viagem de 15 horas" é duração', N.canonSpeech('viagem de 15 horas'), 'viagem de 15 horas');
+  ok('"2 mil" e "3 mil e quinhentos"', [P.wordsToNumbers('recebi 2 mil'), P.wordsToNumbers('paguei R$ 3 mil e quinhentos'), P.wordsToNumbers('gastei 1,5 mil')], ['recebi 2000', 'paguei R$ 3500', 'gastei 1,5 mil']);
+
+  // 2) interpretar
+  const one = (t) => P.parseInput(t, BANK_DAY, NOW2).map((i) => [i.kind, i.title, i.date, i.time, i.amount ?? null]);
+  ok('número com unidade não é dinheiro', [one('remédio 3 vezes ao dia')[0][0], one('ler 30 páginas do livro')[0][0], one('mercado 30')[0][0]], ['task', 'task', 'finance']);
+  ok('verbo pela forma da palavra', [P.isActionVerb('pesquisar'), P.isActionVerb('calibrar'), P.isActionVerb('almocei'), P.isActionVerb('celular'), P.isActionVerb('uber'), P.isActionVerb('mulher')], [true, true, true, false, false, false]);
+  ok('pedaços de dia e hora', P.temporalSpans('reuniao amanha as 9 dentista sexta').map((x) => x.type), ['date', 'time', 'date']);
+  ok('"de segunda a sexta" continua um item só', one('estudar inglês de segunda a sexta às 19h').length, 1);
+  ok('"prova de sexta" não separa', one('estudar para a prova de sexta').length, 1);
+  ok('"me lembrar em 4 dias" não é outro dia', one('prova de circuitos dia 27 me lembrar em 4 dias').length, 1);
+  ok('"às 3" em outro dia é à tarde; "acordar às 5" fica de manhã', [one('reunião quinta às 3')[0][3], one('acordar às 5 amanhã')[0][3], one('reunião quinta às 3 da manhã')[0][3]], ['15:00', '05:00', '03:00']);
+  ok('dia dito antes da pausa vale para o que vem depois', [one('amanhã, lavar o carro')[0][2], one('hoje, lavar a louça, arrumar o quarto').map((x) => x[2])], ['2026-11-10', [BANK_DAY, BANK_DAY]]);
+  ok('"Tomar remédio. Todo dia às 8h" continua valendo para o item anterior', P.parseInput('Tomar remédio. Todo dia às 8h', BANK_DAY, NOW2).map((i) => [i.title, i.repeat && i.repeat.freq, i.time]), [['Tomar remédio', 'daily', '08:00']]);
+  ok('marcas internas não saem do interpretador', P.parseInput('amanhã tem reunião às 9 dentista às 14 e depois academia', BANK_DAY, NOW2).every((i) => !('hard' in i) && !('after' in i) && !('saidTime' in i) && !('periodTime' in i) && !('autoToday' in i) && !/[\u0004\u0005]/.test(i.raw)), true);
+
+  // 3) versões ouvidas: mistura palavra por palavra, só com prova concreta
+  const vocab = V.buildVocab({ subjects: [{ name: 'Química' }], titles: ['Lavar o carro', 'Lavar o carro'] });
+  const pick = (alts, conf) => V.pickBest(alts, BANK_DAY, NOW2, vocab, conf);
+  ok('mistura "pix" de uma versão com "estudar" da outra', pick(['fazer o pique do Bruno de 60 estudar para prova de química', 'fazer o pix do Bruno de 60 isso dá para prova de química']).text, 'fazer o pix do Bruno de 60 estudar para prova de química');
+  ok('mais itens não é prova: "para" não vira "parar"', pick(['ligar para o João amanhã', 'ligar parar o João amanhã']).text, 'ligar para o João amanhã');
+  ok('parte do dia não é prova: "amanhã" não vira "a manhã"', pick(['comprar pão amanhã', 'comprar pão a manhã', 'comprar pau amanhã']).text, 'comprar pão amanhã');
+  ok('valor é prova: "sem reais" perde para "100 reais"', pick(['paguei sem reais de luz', 'paguei 100 reais de luz']).text, 'paguei 100 reais de luz');
+  ok('palavra que a pessoa usa é prova: "caro" perde para "carro"', pick(['lavar o caro amanhã as dez', 'lavar o carro amanhã às 10']).text, 'lavar o carro amanhã às 10');
+  ok('mistura não inventa palavra', V.mixAlts('a b c', ['a x c'], () => 0).text, 'a b c');
+
+  // 4) pausas
+  ok('pausa entre pedaços vira vírgula', V.joinPieces([['lavar o carro', 'lavar o caro'], ['Comprar pão.'], ['amanhã']]), ['lavar o carro, Comprar pão. amanhã', 'lavar o caro, Comprar pão. amanhã']);
+  const W = (arr) => arr.map(([segment, startTimeMillis]) => ({ segment, startTimeMillis }));
+  ok('pausa longa entre palavras vira vírgula', V.pauseCommas('lavar o carro comprar pão amanhã', W([['lavar', 0], ['o', 350], ['carro', 480], ['comprar', 2100], ['pão', 2500], ['amanhã', 2800]])), 'lavar o carro, comprar pão amanhã');
+  ok('fala corrida fica como veio', V.pauseCommas('lavar o carro comprar pão amanhã', W([['lavar', 0], ['o', 350], ['carro', 480], ['comprar', 900], ['pão', 1300], ['amanhã', 1600]])), 'lavar o carro comprar pão amanhã');
+  ok('tempos que não batem com o texto: não mexe', V.pauseCommas('lavar o carro comprar pão', W([['lavar', 0], ['o', 0], ['carro', 5000]])), 'lavar o carro comprar pão');
+  ok('pausa depois de "às" ou "dia" é a pessoa pensando: sem vírgula', [V.joinPieces([['reunião às'], ['10 da noite']]), V.pauseCommas('prova dia 25 amanhã', W([['prova', 0], ['dia', 400], ['25', 2500], ['amanhã', 3000]]))], [['reunião às 10 da noite'], 'prova dia 25 amanhã']);
+  ok('com a pausa, os dois pedidos saem separados', one('lavar o carro, comprar pão amanhã').map((x) => x[1]), ['Lavar o carro', 'Comprar pão']);
+
+  // código
+  const sp = readFileSync(at('src/speech.js'), 'utf8');
+  ok('a escuta guarda a pausa e a confiança', /pauseCommas\(/.test(sp) && /joinPieces\(/.test(sp) && /r\.confidence/.test(sp), true);
+  const cm = readFileSync(at('src/CaptureModal.js'), 'utf8');
+  ok('a tela usa a versão misturada e a confiança', /best\.text/.test(cm) && /info\.conf/.test(cm), true);
+  ok('modo de teste guarda confiança e tempo das palavras', /timing: heard \? heard\.timing/.test(cm) && /tempo das palavras/.test(readFileSync(at('src/Drawer.js'), 'utf8')), true);
+}
+
+
+// ---------- 1.13.1: mesmo lançamento em dois extratos, com datas diferentes (dados inventados) ----------
+{
+  const ok = (name, got, exp) => {
+    total++;
+    if (JSON.stringify(got) !== JSON.stringify(exp)) {
+      fails++;
+      console.log(`FALHOU  1.13.1 extrato: ${name}: esperava ${JSON.stringify(exp)}, veio ${JSON.stringify(got)}`);
+    } else console.log(`ok      1.13.1 extrato: ${name}`);
+  };
+  const head = 'FULANO DE TAL 000.000.000-00 agência: 0000 conta: 00000-0\nextrato conta / lançamentos\ndata lançamentos valor (R$) saldo (R$)\n';
+  // 1º extrato, tirado no sábado 07/11: as compras do sábado aparecem com a data de segunda (09/11)
+  const textA = head + [
+    '09/11/2026 PAY LOJAX 07/11 -40,00',
+    '09/11/2026 PAY LOJAX 07/11 -12,50',
+    '07/11/2026 SALDO DO DIA 147,50',
+    '06/11/2026 PAY CAFE 06/11 -25,00',
+    '06/11/2026 SALDO DO DIA 200,00',
+    '05/11/2026 PAY CAFE 05/11 -25,00',
+    '05/11/2026 SALDO DO DIA 225,00',
+  ].join('\n');
+  // 2º extrato, tirado na terça 10/11: as mesmas compras ficam em 09/11, e há um café novo em 09/11
+  const textB = head + [
+    '10/11/2026 SALDO DO DIA 122,50',
+    '09/11/2026 PAY LOJAX 07/11 -40,00',
+    '09/11/2026 PAY LOJAX 07/11 -12,50',
+    '09/11/2026 PAY CAFE 09/11 -25,00',
+    '09/11/2026 SALDO DO DIA 122,50',
+    '06/11/2026 PAY CAFE 06/11 -25,00',
+    '06/11/2026 SALDO DO DIA 200,00',
+  ].join('\n');
+  const A = DP.parseStatementText(textA, '2026-11-07');
+  ok('1º extrato põe as compras do sábado no dia da compra', A.items.filter((i) => /Lojax/i.test(i.title)).map((i) => i.date), ['2026-11-07', '2026-11-07']);
+  // o que ficou salvo no app depois do 1º extrato
+  const saved = A.items.map((i, k) => ({ id: `a${k}`, type: i.type, amount: i.amount, date: i.date, account: 'itau', status: 'paid', title: i.title }));
+  const B = DP.parseStatementText(textB, '2026-11-10');
+  ok('2º extrato traz a outra data guardada', B.items.filter((i) => /Lojax/i.test(i.title)).map((i) => [i.date, i.sameAs]), [['2026-11-09', ['2026-11-07']], ['2026-11-09', ['2026-11-07']]]);
+  const rec = AC.reconcile(B.items, saved, 'itau', [{ id: 'itau', name: 'Itaú', kind: 'corrente' }]);
+  ok('as compras do sábado não entram de novo', rec.filter((r) => /Lojax/i.test(r.title)).map((r) => [r.action, r.targetId]), [['dup', 'a0'], ['dup', 'a1']]);
+  ok('o café novo de 09/11 entra (não confunde com o de 05/11 nem com o de 06/11)', rec.filter((r) => /Cafe|Café|débito/i.test(r.title)).map((r) => [r.date, r.action]), [['2026-11-09', 'add'], ['2026-11-06', 'dup']]);
+  ok('a revisão diz por que é repetido', /outra data/.test(rec.find((r) => /Lojax/i.test(r.title)).hint), true);
+  ok('a outra data não é salva no lançamento', rec.every((r) => !('sameAs' in r)) && !('sameAs' in AC.toFinanceData(rec[0], 'itau', 'imp1')), true);
+  // pelo arquivo inteiro (marca de "já está no app" na revisão)
+  const enc = new TextEncoder();
+  const doc = DP.parseDocument({ name: 'b.csv', bytes: enc.encode(textB) }, '2026-11-10', saved);
+  ok('a revisão marca as duas compras do sábado como já importadas', doc.items.filter((i) => /Lojax/i.test(i.title)).map((i) => i.duplicate), [true, true]);
+  ok('e deixa o café novo marcado para importar', doc.items.filter((i) => i.date === '2026-11-09' && !/Lojax/i.test(i.title)).map((i) => i.duplicate), [false]);
+  ok('extrato que fecha: sem diferença', [A.meta.gap || null, B.meta.gap || null], [null, null]);
+  const C = DP.parseStatementText(textB.replace('10/11/2026 SALDO DO DIA 122,50', '10/11/2026 SALDO DO DIA 122,51'), '2026-11-10');
+  ok('extrato que não fecha por 1 centavo: o app avisa, sem inventar lançamento', [C.meta.gap, C.items.length === B.items.length, C.meta.balance], [{ amount: 0.01, date: '2026-11-10' }, true, 122.51]);
+  const es = readFileSync(at('src/EditSheet.js'), 'utf8');
+  ok('a revisão mostra a diferença do banco', /O extrato do banco não fecha/.test(es), true);
+  // reimportar o mesmo extrato continua dando tudo repetido
+  const savedB = B.items.map((i, k) => ({ id: `b${k}`, type: i.type, amount: i.amount, date: i.date, account: 'itau', status: 'paid', title: i.title }));
+  ok('reimportar o mesmo extrato: tudo já está no app', AC.reconcile(B.items, savedB, 'itau', []).every((r) => r.action === 'dup'), true);
+}
+
+console.log(`\n1.13.1: ${total - fails}/${total} passaram`);
 process.exitCode = fails ? 1 : 0;

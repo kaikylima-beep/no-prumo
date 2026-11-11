@@ -7,6 +7,7 @@
 // Tudo roda no celular, sem internet. PDF escaneado (foto) não tem texto: o app avisa.
 import { inflate } from 'pako';
 import { fold, guessFinance } from './parser';
+import { REFUND, CHARGES, isCardBill, learnedCategory, refundChanges } from './financeFixes';
 
 // ---------- bytes → texto ----------
 
@@ -727,7 +728,7 @@ function addMonthIso(iso, n) {
 
 // prefixos de extrato que não ajudam a reconhecer o gasto
 const NOISE =
-  /\b(?:compra\s+(?:no\s+)?(?:cartao\s+)?(?:de\s+)?(?:debito|credito)?|compra\s+cartao|pagamento\s+(?:de\s+)?(?:boleto\s+)?|pagto\s+|pag\s+|boleto\s+|pay\s+|pix\s+qrs?\s+|pix\s+(?:enviado|recebido|transf\w*)(?:\s+para)?|transf\w*\s+(?:enviada|recebida|pix)?|ted\s+|doc\s+|deb\.?\s+aut\.?|debito\s+automatico|parc\w*\s+\d+\/\d+|\d{2}\/\d{2}\s*$)|\*+/g;
+  /\b(?:compra\s+(?:no\s+)?(?:cartao\s+)?(?:de\s+)?(?:debito|credito)?|compra\s+cartao|pagamento\s+(?:de\s+)?(?:boleto\s+)?|pagto\s+|pag\s+|boleto\s+|pay\s+|pix\s+qrs?\s+|rscss\s+|pix\s+(?:enviado|recebido|transf\w*)(?:\s+para)?|transf\w*\s+(?:enviada|recebida|pix)?|ted\s+|doc\s+|deb\.?\s+aut\.?|debito\s+automatico|parc\w*\s+\d+\/\d+|\d{2}\/\d{2}\s*$)|\*+/g;
 const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
 function niceTitle(desc) {
@@ -735,7 +736,9 @@ function niceTitle(desc) {
   const orig = String(desc || '')
     .replace(/\s+/g, ' ')
     .trim()
-    .replace(/\s*\d{2}\/\d{2}$/, '');
+    .replace(/\s*\d{2}\/\d{2}$/, '')
+    // 1.13: data sem barra grudada no fim ("TRANSP COLET0711")
+    .replace(/([A-Za-zÀ-ÿ])(?:0[1-9]|[12]\d|3[01])(?:0[1-9]|1[0-2])$/, '$1');
   const f = fold(orig);
   // fold troca letra por letra, então dá para cortar os mesmos trechos do original e manter os acentos
   let t = '';
@@ -765,9 +768,10 @@ const MERCHANTS = [
   [/\b(copel|cemig|enel|light|celesc|energisa|coelba|sabesp|sanepar|copasa|claro|vivo|tim|oi|net|edificio|condominio|aluguel)\b/, 'Contas'],
   [/\b(fatura\s+paga|pagamento\s+fatura)\b/, 'Cartão'],
   [/\b(carre\w*|merca\w*|atacad\w*|assai|supermerc\w*|padaria|ifood|restaurante)\b/, 'Alimentação'],
-  [/\b(uber|99app|99\s+pop|posto|combustivel)\b/, 'Transporte'],
+  [/\b(uber|99app|99\s+pop|posto|combustivel|transp\w*\s+colet\w*|onibus|metro|urbs)\b/, 'Transporte'],
   [/\b(farmacia|drogaria|droga\w*|raia)\b/, 'Saúde'],
-  [/\b(iof|juros|tarifa|anuidade)\b/, 'Contas'],
+  // 1.13: cobrança do banco é custo evitável, não conta necessária
+  [/\b(iof|juros|tarifa|anuidade|encargos?|multa)\b/, CHARGES],
 ];
 
 const IN_HINT = /\b(pix\s+recebido|recebid[oa]|salario|deposito|credito\s+em\s+conta|transf\w*\s+recebida|estorno|rendimento|reembolso|ted\s+recebida|proventos)\b/;
@@ -803,6 +807,14 @@ function makeItem({ date, desc, amount, typeHint }, today, ctx) {
       };
     }
     return null;
+  }
+  // 1.13: Pix devolvido ("DEV PIX Fulano") e rendimento da aplicação automática
+  if (type === 'out' && /^\s*dev(?:ol\w*)?\.?\s+(?:de\s+)?pix\b|\bdevolucao\s+(?:de\s+)?pix\b/.test(f)) {
+    const who = niceTitle(desc.replace(/^\s*dev\w*\.?\s+(?:de\s+)?pix\s*/i, ''));
+    return { title: who && who !== 'Compra no débito' ? `Pix devolvido para ${who}` : 'Pix devolvido', amount: Math.abs(amount), type, category: REFUND, essential: null, date: date || today, status: 'paid', source: desc, hint: 'Pix devolvido: ele e o Pix que voltou não contam como renda nem gasto' };
+  }
+  if (type === 'in' && /\brend\w*\s+pago\b|\brendimento|\baplic\w*\s+aut/.test(f)) {
+    return { title: 'Rendimento', amount: Math.abs(amount), type, category: 'Investimentos', date: date || today, status: (date || today) > today ? 'pending' : 'paid', source: desc };
   }
   let title = niceTitle(desc);
   const known = MERCHANTS.find(([re]) => re.test(fold(title))) || MERCHANTS.find(([re]) => re.test(f));
@@ -955,6 +967,8 @@ export function parseStatementText(text, today) {
       break;
     }
   }
+  // 1.13.1: "SALDO DO DIA" de cada dia, na ordem do arquivo, para conferir se o próprio extrato fecha
+  const dayBalances = [];
   for (const l of lines) {
     const ds = DATE_START.exec(l);
     let rest = l;
@@ -967,6 +981,11 @@ export function parseStatementText(text, today) {
     const money = rest.match(MONEY);
     if (!money) continue;
     if (!date && !lastDate) continue;
+    if (/^saldo\s+do\s+dia\b/.test(fold(rest))) {
+      const v = parseAmount(money[money.length - 1]);
+      if (v !== null) dayBalances.push({ date: date || lastDate, balance: v });
+      continue;
+    }
     if (SKIP.test(fold(rest))) continue;
     // o valor do lançamento é o primeiro número com centavos depois da descrição;
     // um segundo número no fim costuma ser o saldo
@@ -989,9 +1008,63 @@ export function parseStatementText(text, today) {
     if (it) items.push({ ...it, _desc: desc });
   }
   const meta = statementMeta(lines, text, today, holder);
+  const gap = statementGap(items, dayBalances);
+  if (gap) meta.gap = gap;
+  for (const it of items) it.bankDate = it.date;
   postedEarlier(items, meta.balanceDate, kind);
-  for (const it of items) delete it._desc;
+  for (const it of items) {
+    // 1.13.1: o mesmo lançamento pode vir com outra data em outro extrato (dia da compra × dia em que o
+    // banco lançou). As duas datas ficam guardadas para a importação reconhecer o que já está no app.
+    const bought = boughtOn(it._desc, it.bankDate);
+    it.sameAs = [...new Set([it.bankDate, bought].filter((d) => d && d !== it.date))];
+    if (!it.sameAs.length) delete it.sameAs;
+    delete it.bankDate;
+    delete it._desc;
+  }
   return { kind, items, meta };
+}
+
+// O extrato fecha? Entre dois "SALDO DO DIA" seguidos, o saldo tem que mudar exatamente o que foi
+// lançado entre eles. Quando não muda (o banco às vezes soma um rendimento do dia que ainda não lista),
+// devolve a diferença: { amount, date } do dia em que ela aparece. O app não inventa lançamento para isso.
+function statementGap(items, days) {
+  // um saldo por dia (o último que aparece), do mais antigo para o mais novo
+  const byDay = new Map();
+  for (const d of days) byDay.set(d.date, d.balance);
+  const list = [...byDay.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1));
+  if (list.length < 2) return null;
+  let total = 0;
+  let date = null;
+  for (let k = 1; k < list.length; k++) {
+    const [d0, b0] = list[k - 1];
+    const [d1, b1] = list[k];
+    // o que o banco lançou depois do saldo de d0 até o de d1 (pela data do banco)
+    const between = items
+      .filter((it) => it.date > d0 && it.date <= d1)
+      .reduce((s, it) => s + (it.type === 'in' ? 1 : it.type === 'out' ? -1 : it.dir || 0) * it.amount, 0);
+    const diff = Math.round((b1 - b0 - between) * 100) / 100;
+    if (Math.abs(diff) >= 1) return null; // diferença grande: o arquivo não foi lido inteiro, não dá para afirmar nada
+    if (Math.abs(diff) >= 0.005) {
+      total += diff;
+      date = d1;
+    }
+  }
+  total = Math.round(total * 100) / 100;
+  return Math.abs(total) >= 0.005 ? { amount: total, date } : null;
+}
+
+// "PAY JANEL 07/11" lançado em 09/11: a compra foi em 07/11 (até 10 dias antes do lançamento)
+function boughtOn(desc, bankDate) {
+  const m = /(\d{2})\/?(\d{2})\s*$/.exec(desc || '');
+  if (!m || !bankDate) return null;
+  const d = Number(m[1]);
+  const mo = Number(m[2]);
+  if (d < 1 || d > 31 || mo < 1 || mo > 12) return null;
+  let y = Number(bankDate.slice(0, 4));
+  if (mo > Number(bankDate.slice(5, 7)) + 1) y -= 1;
+  const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const gap = (Date.parse(`${bankDate}T12:00:00Z`) - Date.parse(`${iso}T12:00:00Z`)) / 864e5;
+  return Number.isFinite(gap) && gap >= 0 && gap <= 10 ? iso : null;
 }
 
 // 1.9.3: o Itaú lista com a data do próximo dia útil compras já feitas ("PAY JANEL 07/11" com data 09/11).
@@ -1086,7 +1159,9 @@ export function parseCSVRows(rows, today) {
 
 // ---------- entrada única ----------
 
-const sameDay = (a, b) => a.date === b.date && Math.abs(a.amount - b.amount) < 0.005 && a.type === b.type;
+// mesmo valor e tipo, no mesmo dia (ou no outro dia em que o mesmo lançamento aparece em outro extrato)
+const sameDay = (e, it) =>
+  (e.date === it.date || (it.sameAs || []).includes(e.date)) && Math.abs(e.amount - it.amount) < 0.005 && e.type === it.type;
 
 export function parseDocument({ name = '', mimeType = '', bytes }, today, existing = []) {
   const lower = name.toLowerCase();
@@ -1107,10 +1182,41 @@ export function parseDocument({ name = '', mimeType = '', bytes }, today, existi
   const meta = { bank: null, agency: null, number: null, balance: null, balanceDate: null, ...(res.meta || {}) };
   if (!meta.bank) meta.bank = detectBank('', name);
   // marca o que já parece estar no app (mesmo dia, mesmo valor, mesmo tipo)
-  const items = res.items.map((it, k) => {
-    const dup = existing.some((e) => sameDay(e, it));
-    return { ...it, key: `imp${k}`, duplicate: dup, selected: !dup };
+  const taken = new Set();
+  const twin = (it, exact) =>
+    existing.find((e) => !taken.has(e) && (exact ? e.date === it.date && sameDay(e, it) : sameDay(e, it)));
+  // primeiro o mesmo dia, depois a outra data: assim duas compras iguais em dias diferentes não se confundem
+  const exactDup = res.items.map((it) => {
+    const e = twin(it, true);
+    if (e) taken.add(e);
+    return !!e;
   });
+  let items = res.items.map((it, k) => {
+    let dup = exactDup[k];
+    if (!dup) {
+      const e = twin(it, false);
+      if (e) taken.add(e);
+      dup = !!e;
+    }
+    const row = { ...it, key: `imp${k}`, duplicate: dup, selected: !dup };
+    // 1.13: o mesmo nome que você já classificou ganha a mesma categoria
+    if (row.type !== 'transfer' && row.category === 'Outros') {
+      const learned = learnedCategory(row.title, row.type, existing);
+      if (learned) Object.assign(row, learned);
+    }
+    // a fatura paga fica sem marca de necessário/não necessário
+    if (isCardBill(row)) row.essential = null;
+    return row;
+  });
+  // 1.13: Pix devolvido e o Pix que voltou, os dois no mesmo arquivo, se anulam
+  const pairs = refundChanges(items.map((r) => ({ ...r, id: r.key })));
+  if (Object.keys(pairs).length) {
+    items = items.map((r) =>
+      pairs[r.key]
+        ? { ...r, category: REFUND, essential: null, hint: 'Pix devolvido: ele e a devolução não contam como renda nem gasto' }
+        : r
+    );
+  }
   return { kind: res.kind, items, meta };
 }
 

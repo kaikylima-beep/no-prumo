@@ -7,7 +7,7 @@ import { useUI } from '../uiContext';
 import { pad, MONTHS, todayISO, shortBR, showMoney as formatMoney, daysInMonth, diffDays, privacy } from '../utils';
 import { pickAndReadDocument, batchFromImport } from '../importDocument';
 import { Screen, Row, Empty, Pill, Hero, heroText, Card, ListBox, Section, Segmented, Notice, IconButton, Icon, s } from '../ui';
-import { monthBudget, ALERT_AT, salaryToAsk } from '../budget';
+import { monthBudget, ALERT_AT, salaryToAsk, isRefund } from '../budget';
 import BudgetEditor from '../components/BudgetEditor';
 import { AccountsCard, AccountEditor } from '../components/Accounts';
 import InsightsModal from '../components/Insights';
@@ -94,8 +94,9 @@ export default function FinanceScreen({ active = true }) {
   const paid = items.filter((t) => t.status !== 'pending').sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   const pending = items.filter((t) => t.status === 'pending').sort((a, b) => a.date.localeCompare(b.date));
 
-  const inPaid = sum(paid.filter((t) => t.type === 'in'));
-  const outPaid = sum(paid.filter((t) => t.type === 'out'));
+  // 1.13: Pix devolvido (os dois lados) não conta como entrada nem saída
+  const inPaid = sum(paid.filter((t) => t.type === 'in' && !isRefund(t)));
+  const outPaid = sum(paid.filter((t) => t.type === 'out' && !isRefund(t)));
   const inPend = sum(pending.filter((t) => t.type === 'in'));
   const outPend = sum(pending.filter((t) => t.type === 'out'));
   const result = inPaid - outPaid;
@@ -106,7 +107,7 @@ export default function FinanceScreen({ active = true }) {
 
   const byCat = {};
   items
-    .filter((t) => t.type === 'out')
+    .filter((t) => t.type === 'out' && !isRefund(t))
     .forEach((t) => {
       byCat[t.category] = (byCat[t.category] || 0) + t.amount;
     });
@@ -136,7 +137,7 @@ export default function FinanceScreen({ active = true }) {
   for (let k = 5; k >= 0; k--) {
     const d = new Date(ym.y, ym.m - k, 1);
     const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    const total = finance.filter((t) => t.type === 'out' && t.date.startsWith(mk)).reduce((a, t) => a + t.amount, 0);
+    const total = finance.filter((t) => t.type === 'out' && !isRefund(t) && t.date.startsWith(mk)).reduce((a, t) => a + t.amount, 0);
     months.push({ key: mk, label: MONTHS[d.getMonth()].slice(0, 3).toLowerCase(), total });
   }
   const maxMonth = Math.max(1, ...months.map((x) => x.total));
@@ -253,6 +254,7 @@ export default function FinanceScreen({ active = true }) {
   const showAccounts = acc.hasKnown && isCurrentMonth;
   // há contas, mas nenhuma com saldo: pede o saldo em vez de mostrar um número inventado
   const needBalance = !acc.hasKnown && moneyAccounts.length > 0 && isCurrentMonth;
+  const heroShowsResult = !showAccounts && !needBalance;
   const hero = (
     <View>
     <Pressable
@@ -297,7 +299,8 @@ export default function FinanceScreen({ active = true }) {
           </View>
         </View>
       )}
-      {isCurrentMonth && (pending.length || fc.salaryPending) ? (
+      {/* 1.13: com o "Ainda pode gastar" cortado pelo dinheiro das contas, o cartão do orçamento já mostra esse valor */}
+      {isCurrentMonth && (pending.length || fc.salaryPending) && !(hasBudget && !bud.noSalary && bud.capped) ? (
         <Text style={[st.forecast, { color: ht.soft }]}>
           Previsto no fim do mês{fc.salaryPending ? ' (com o salário)' : ''}: <Text style={{ fontWeight: '700', color: ht.ink }}>{formatMoney(fc.value)}</Text>
         </Text>
@@ -415,8 +418,13 @@ export default function FinanceScreen({ active = true }) {
             <Text style={{ color: barColor, fontWeight: '800' }}>■ </Text>Necessários {formatMoney(bud.essential)}
           </Text>
           <Text style={st.legend}>
-            <Text style={{ color: barColor, opacity: 0.5, fontWeight: '800' }}>■ </Text>Não necessários {formatMoney(bud.nonEssential)}
+            <Text style={{ color: barColor, opacity: 0.5, fontWeight: '800' }}>■ </Text>Não necessários {formatMoney(bud.nonEssential - (bud.cardBill || 0))}
           </Text>
+          {bud.cardBill ? (
+            <Text style={st.legend}>
+              <Text style={{ color: barColor, opacity: 0.5, fontWeight: '800' }}>■ </Text>Fatura do cartão {formatMoney(bud.cardBill)} (junta os dois tipos)
+            </Text>
+          ) : null}
           <Text style={st.legend}>
             Salário {formatMoney(bud.salaryIncome)}
             {bud.target ? ` · guardar ${formatMoney(bud.target)}` : ''}
@@ -464,7 +472,6 @@ export default function FinanceScreen({ active = true }) {
       <Text style={[st.bValue, strong && st.bStrong, value < 0 && strong && { color: tone.warn }]}>{strong ? formatMoney(value) : signed(value)}</Text>
     </View>
   );
-  const change = bridge ? Math.round((bridge.end - bridge.start) * 100) / 100 : 0;
   const moved = bridge ? Math.round((bridge.extIn - bridge.extOut) * 100) / 100 : 0;
   const resultCard = bridge ? (
     <Card>
@@ -479,23 +486,14 @@ export default function FinanceScreen({ active = true }) {
         <View style={st.bLine} />
         {bRow(isCurrentMonth ? 'Hoje nas contas' : 'Fim do mês', bridge.end, null, true)}
       </View>
+      {/* 1.13: "Mudança no saldo" saiu: era "hoje" − "começou o mês", que já estão logo acima */}
       <View style={st.tiles2}>
         <View style={[st.tile2, { backgroundColor: pal.tint }]}>
           <Text style={st.sumLabel}>Sobra do mês</Text>
           <Text style={[st.tile2Value, result < 0 && { color: tone.warn }]}>{signed(result)}</Text>
-          <Text style={st.bNote}>o que ganhou − o que gastou</Text>
-        </View>
-        <View style={[st.tile2, { backgroundColor: pal.tint }]}>
-          <Text style={st.sumLabel}>Mudança no saldo</Text>
-          <Text style={[st.tile2Value, change < 0 && { color: tone.warn }]}>{signed(change)}</Text>
-          <Text style={st.bNote}>{isCurrentMonth ? 'hoje' : 'fim do mês'} − começo do mês</Text>
+          <Text style={st.bNote}>o que ganhou − o que gastou{moved ? ` (sem o que ${moved > 0 ? 'veio de' : 'foi para'} outras contas suas)` : ''}</Text>
         </View>
       </View>
-      {moved ? (
-        <Text style={st.small}>
-          A diferença entre os dois é o dinheiro que {moved > 0 ? 'veio de' : 'foi para'} outras contas suas ({formatMoney(Math.abs(moved))}).
-        </Text>
-      ) : null}
       {looseIn || looseOut ? (
         <Text style={st.small}>
           Sem conta (contam na sobra, não no saldo): {looseIn ? `+ ${formatMoney(looseIn)}` : ''}
@@ -506,8 +504,9 @@ export default function FinanceScreen({ active = true }) {
     </Card>
   ) : (
     <Card>
-      <Text style={st.cardTitle}>Sobra do mês</Text>
-      <Text style={[st.resultValue, result < 0 && { color: tone.warn }]}>{signed(result)}</Text>
+      {/* 1.13: o destaque do topo já mostra a sobra quando não há saldo de conta; aqui ficam só entradas e saídas */}
+      <Text style={st.cardTitle}>{heroShowsResult ? 'Entradas e saídas' : 'Sobra do mês'}</Text>
+      {heroShowsResult ? null : <Text style={[st.resultValue, result < 0 && { color: tone.warn }]}>{signed(result)}</Text>}
       <View style={st.sums}>
         <View style={{ flex: 1 }}>
           <Text style={st.sumLabel}>Entradas</Text>
@@ -522,7 +521,7 @@ export default function FinanceScreen({ active = true }) {
           {outPend ? <Text style={st.small}>+ {formatMoney(outPend)} a pagar</Text> : null}
         </View>
       </View>
-      <Text style={st.small}>O que você ganhou menos o que gastou. Informe o saldo de uma conta para ver também quanto o saldo mudou.</Text>
+      <Text style={st.small}>{heroShowsResult ? 'A sobra do mês está no topo.' : 'O que você ganhou menos o que gastou.'} Informe o saldo de uma conta para ver de onde veio o saldo de hoje.</Text>
       {rc.totals.own ? <Text style={st.small}>Transferências entre suas contas não entram aqui ({formatMoney(rc.totals.own)} neste mês).</Text> : null}
     </Card>
   );

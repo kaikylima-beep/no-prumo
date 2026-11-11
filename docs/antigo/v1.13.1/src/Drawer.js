@@ -9,6 +9,7 @@ import { useData, LEVELS, LEVEL_LABEL } from './store';
 import { useUI } from './uiContext';
 import { getExactAlarm, requestExactAlarm, previewAlert, vibrationOff, PREVIEW_SECONDS } from './reminders';
 import AboutFields from './components/AboutFields';
+import AcademicFields from './components/AcademicFields';
 import { OCCUPATIONS } from './subjects';
 import AlertPreview from './components/AlertPreview';
 import { exportBackup, pickBackup, restoreBackup, undoRestore, hasBeforeRestore, backupAge } from './backup';
@@ -28,7 +29,7 @@ try {
   FS = null;
 }
 
-const APP_VERSION = '1.12.3';
+const APP_VERSION = '1.13.1';
 
 function SwitchRow({ label, value, onChange }) {
   return (
@@ -100,7 +101,7 @@ function Content({ onClose, onPreview }) {
   const insets = useSafeAreaInsets();
   const {
     settings, updateProfile, setTheme, setLevel, setAutoListen, setShortTitles, setLayout, setAlertStyle,
-    misheard, clearMisheard, palettes, simple, setBackupInfo, setVoiceOnDevice, forgetVoice, setTestMode,
+    misheard, clearMisheard, palettes, simple, setBackupInfo, setVoiceOnDevice, forgetVoice, setTestMode, setAcademic,
   } = useData();
   const [aboutOpen, setAboutOpen] = useState(false);
   const taps = useRef({ n: 0, at: 0 });
@@ -156,6 +157,10 @@ function Content({ onClose, onPreview }) {
       if (others.length) parts.push(`   outras versões: ${others.map((a) => `"${a}"`).join(' | ')}`);
       if (m.parsed && m.parsed.length) parts.push(`   o app entendeu: ${m.parsed.join(' | ')}`);
       if (m.fixed && m.fixed.length) parts.push(`   você salvou: ${m.fixed.join(' | ')}`);
+      // 1.13.1: o que o Android informou sobre a escuta (serve para afinar as pausas e a escolha da versão)
+      const conf = (m.conf || []).filter((c) => typeof c === 'number' && c > 0);
+      if (conf.length) parts.push(`   confiança do Android: ${conf.map((c) => c.toFixed(2).replace('.', ',')).join(' | ')}`);
+      if (m.timing && m.timing.length) parts.push(`   tempo das palavras: ${m.timing.map(([w, ms]) => `${w} ${(ms / 1000).toFixed(1).replace('.', ',')}`).join(' · ')}`);
       if (m.audio) parts.push('   (áudio guardado no celular)');
       return parts.join('\n');
     });
@@ -191,6 +196,7 @@ function Content({ onClose, onPreview }) {
       {aboutOpen ? (
         <View style={st.aboutBox}>
           <AboutFields value={profile} onChange={updateProfile} />
+          <AcademicFields value={settings.academic} onChange={setAcademic} />
         </View>
       ) : null}
 
@@ -262,6 +268,13 @@ function Content({ onClose, onPreview }) {
           <Pill label="Som no Android" color={colors.mute} onPress={() => Linking.openSettings()} />
         ) : null}
       </View>
+      {/* 1.13: "Foi na aula?" com Fui / Faltei */}
+      <SwitchRow label="Perguntar depois da aula se você foi" value={settings.academic.askAttendance} onChange={(v) => setAcademic({ askAttendance: v })} />
+      <Text style={st.help}>
+        {settings.academic.askAttendance
+          ? 'Cinco minutos depois de cada aula chega "Foi na aula?", com Fui e Faltei. Faltei conta as faltas sozinho.'
+          : 'Usa os horários das matérias. Também dá para marcar a falta na matéria ou falando "faltei na aula de física".'}
+      </Text>
 
       {/* Voz */}
       <Text style={st.h}>Voz</Text>
