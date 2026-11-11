@@ -43,7 +43,7 @@ export function tokenize(text) {
       const s = m[6];
       const val = /^\d+\.\d{1,2}$/.test(s) ? parseFloat(s) : parseFloat(s.replace(/\./g, '').replace(',', '.'));
       out.push({ raw, n: s, kind: 'num', val, dec: /[.,]\d{1,2}$/.test(s) && !/^\d+(\.\d{3})+$/.test(s) });
-    } else if (m[7]) out.push({ raw, n: norm(raw).replace(/-feira$/, ''), kind: 'w' });
+    } else if (m[7]) out.push({ raw, n: norm(raw).replace(/-feiras?$/, ''), kind: 'w' });
     else out.push({ raw, n: raw, kind: 'p' });
   }
   return out;
@@ -123,7 +123,7 @@ function weekdayList(t, i) {
   if (first === null) return null;
   const days = [first];
   let j = i + 1;
-  if (is(t, j, 'feira')) j++;
+  if (is(t, j, 'feira', 'feiras')) j++;
   for (;;) {
     let k = j;
     if (t[k] && (t[k].n === ',' || is(t, k, 'e'))) k++;
@@ -401,7 +401,7 @@ function mDate(t, i, now) {
       if (date < nextMonday) date = addDays(date, 7);
     } else if (seq(t, i + len, ['agora'])) len += 1;
     else if (date === today && is(t, i - 1, 'proxima', 'proximo')) date = addDays(date, 7);
-    return { kind: 'date', len, date, days: list.days, weekday: true };
+    return { kind: 'date', len, date, days: list.days, weekday: true, plural: /s$/.test(t[i].n) };
   }
   return null;
 }
@@ -484,6 +484,41 @@ function everyN(n, unit, len) {
   return null;
 }
 
+// duração: "tenho 10 minutos para", "por 30 minutos", "durante 1 hora"
+function mDuration(t, i) {
+  let j = i;
+  let lead = null;
+  if (is(t, j, 'tenho', 'tem', 'temos')) {
+    lead = 'tenho';
+    j++;
+    if (is(t, j, 'so', 'uns', 'umas', 'apenas')) j++;
+  } else if (is(t, j, 'por', 'durante')) {
+    lead = 'por';
+    j++;
+    if (is(t, j, 'uns', 'umas')) j++;
+  } else return null;
+  let minutes;
+  if (is(t, j, 'meia') && is(t, j + 1, 'hora')) {
+    minutes = 30;
+    j += 2;
+  } else {
+    const num = readNum(t, j, true);
+    const u = num && t[j + num.len] && TIME_UNIT[t[j + num.len].n];
+    if (!num || (u !== 'min' && u !== 'h')) return null;
+    minutes = u === 'h' ? num.val * 60 : num.val;
+    j += num.len + 1;
+    if (u === 'h' && is(t, j, 'e') && is(t, j + 1, 'meia')) {
+      minutes += 30;
+      j += 2;
+    }
+  }
+  if (lead === 'tenho') {
+    if (!is(t, j, 'para', 'pra')) return null;
+    j++;
+  }
+  return { kind: 'dur', len: j - i, minutes };
+}
+
 // "me lembra 4 dias antes", "avisar 2 horas antes", "3 dias antes"
 function mRemind(t, i) {
   let j = i;
@@ -535,10 +570,11 @@ function mMoney(t, i) {
 }
 
 const PREFIX = {
-  date: new Set(['na', 'no', 'nessa', 'nesta', 'neste', 'nesse', 'essa', 'esse', 'esta', 'este', 'em', 'para', 'pra', 'pro', 'ate', 'la', 'ja', 'proxima', 'proximo', 'desde']),
+  date: new Set(['as', 'aos', 'nas', 'nos', 'na', 'no', 'nessa', 'nesta', 'neste', 'nesse', 'essa', 'esse', 'esta', 'este', 'em', 'para', 'pra', 'pro', 'ate', 'la', 'ja', 'proxima', 'proximo', 'desde']),
   time: new Set(['para', 'pra', 'ate', 'la']),
   money: new Set(['de', 'por', 'valor', 'custou', 'custa', 'deu', 'sao', 'uns', 'no']),
   rel: new Set(['para', 'pra', 'la']),
+  dur: new Set(['eu']),
   part: new Set(),
   rec: new Set(),
   remind: new Set(['e', 'para', 'pra']),
@@ -552,7 +588,7 @@ export function tag(t, now, protect = []) {
   protect.forEach((p) => {
     for (let k = p.s; k < p.e; k++) taken[k] = true;
   });
-  const matchers = [mRemind, mRecurrence, mRelative, mTimeRange, mMoney, mDate, mTime, mPartOfDay];
+  const matchers = [mRemind, mDuration, mRecurrence, mRelative, mTimeRange, mMoney, mDate, mTime, mPartOfDay];
   let i = 0;
   while (i < t.length) {
     if (taken[i] || t[i].kind === 'p') {
@@ -598,7 +634,7 @@ const PAST_MONEY = new Set(['paguei', 'gastei', 'comprei', 'recebi', 'ganhei', '
 const PAST_OTHER = new Set(['tirei', 'faltei']);
 const BINDERS = new Set(['para', 'pra', 'de', 'a', 'vou', 'vai', 'vamos', 'preciso', 'precisa', 'precisamos', 'tenho', 'tem', 'temos', 'que', 'quero', 'queria', 'devo', 'deve', 'posso', 'pode', 'nao', 'sem', 'ate', 'ao', 'tentar', 'comecar', 'terminar', 'ir', 'ja', 'e', 'ou', 'eu', 'pro', 'do', 'da', 'no', 'na', 'o', 'um', 'uma', 'meu', 'minha', 'conseguir', 'esquecer', 'lembrar', 'antes', 'depois', 'como', 'onde', 'se', 'so', 'tambem', 'ainda', 'vir', 'voltar', 'deixar', 'mandar', 'fazer']);
 const INTENT_NOUN = new Set(['prova', 'trabalho', 'pix', 'boleto', 'conta', 'aluguel', 'seminario', 'lista', 'relatorio', 'reuniao', 'consulta', 'aula', 'fatura', 'dentista', 'medico', 'academia', 'mercado', 'luz', 'agua', 'internet', 'exame', 'entrega', 'apresentacao', 'salario', 'bolsa', 'mensalidade', 'parcela', 'p1', 'p2', 'p3', 'gas', 'condominio']);
-const SKIP_AFTER_E = new Set(['o', 'a', 'os', 'as', 'um', 'uma', 'eu', 'meu', 'minha', 'ainda', 'tambem']);
+const SKIP_AFTER_E = new Set(['disso', 'que', 'o', 'a', 'os', 'as', 'um', 'uma', 'eu', 'meu', 'minha', 'ainda', 'tambem']);
 const MUST = new Set(['preciso', 'tenho', 'vou', 'quero', 'devo', 'precisamos', 'temos']);
 const CONNECTOR = new Set(['e', 'depois', 'tambem', 'ai', 'mais', 'dai', 'entao']);
 
@@ -710,7 +746,7 @@ const CATEGORY_WORDS = {
 const CATEGORY_OF = {};
 Object.entries(CATEGORY_WORDS).forEach(([c, ws]) => ws.forEach((w) => (CATEGORY_OF[w] = c)));
 
-const LEAD_FILLER = /^(?:(?:por favor|oi|ola|ok|ei|entao|bom|bem|ah|e|ai|dai|tambem|depois|mais|ainda|peep|hoje|agora)\s+)+/;
+const LEAD_FILLER = /^(?:(?:por favor|oi|ola|ok|ei|entao|bom|bem|ah|e|ai|dai|tambem|depois|disso|em seguida|mais|ainda|eu(?= \S+(?:ar|er|ir) )|hoje|agora)\s+)+/;
 const OBLIGATION = new RegExp(
   '^(?:eu\\s+|a gente\\s+|nos\\s+)?(?:' +
     [
@@ -785,6 +821,7 @@ function buildItem(t, seg, spans, ctx) {
   const words = [];
   for (let k = seg.s; k < seg.e; k++) if (!inSpan[k] && t[k].kind !== 'p') words.push(t[k]);
   const ns = words.map((w) => w.n);
+  const allNs = ns.join(' ');
   const has = (set) => ns.some((n) => set.has(n));
   const subject = findSubject(t, seg.s, seg.e, subjects);
 
@@ -809,8 +846,10 @@ function buildItem(t, seg, spans, ctx) {
       const d = new Date(now.getTime() + sp.minutes * 60000);
       item.date = toISO(d);
       item.time = hhmm(d.getHours(), d.getMinutes());
+      item._rel = sp.minutes;
       timeSure = true;
-    } else if (sp.kind === 'rec' && !item.repeat) {
+    } else if (sp.kind === 'dur' && !item.duration) item.duration = sp.minutes;
+    else if (sp.kind === 'rec' && !item.repeat) {
       item.repeat = { ...sp.repeat };
       if (sp.period) period = period || sp.period;
     } else if (sp.kind === 'remind' && item.remind === null) item.remind = sp.minutes;
@@ -999,6 +1038,9 @@ function buildItem(t, seg, spans, ctx) {
       if (passed) item.guessedDay = true;
     }
   }
+  // "tenho 10 minutos para lavar a louça" é para agora
+  if (item.duration && !item.date && item.type !== 'money') item.date = today;
+  if (/^(?:e )?(?:depois|em seguida|dai|ai)\b/.test(allNs)) item._seq = true;
   delete item._dom;
   delete item._weekday;
   delete item._days;
@@ -1031,17 +1073,45 @@ function specialOf(t, seg, spans, ctx, built) {
     const m = text.match(/(?:aula|materia)\s+(?:de|da|do)\s+(.+?)(?:\s+(?:hoje|ontem|amanha))?$/);
     return { type: 'absence', date: item.date || toISO(ctx.now), subjectId: subject ? subject.id : null, subjectName: subject ? subject.name : m ? cap(m[1]) : null };
   }
-  // "aula de cálculo segunda e quarta das 10 às 12", "estágio de segunda a sexta das 13 às 18"
-  const rec = spans.find((sp) => sp.s >= seg.s && sp.e <= seg.e && (sp.kind === 'rec' || (sp.kind === 'date' && sp.days && sp.days.length > 1)));
-  const fixedWord = /^(?:(?:eu\s+)?(?:tenho|faco)\s+)?(?:minha\s+|meu\s+)?(aula|estagio|trabalho|academia|treino|monitoria|curso|ingles|laboratorio|lab)\b/.exec(text);
-  const days = rec ? (rec.repeat && rec.repeat.freq === 'weekly' ? rec.repeat.days : rec.days) : null;
-  if (fixedWord && days && days.length && item.time && (item.endTime || fixedWord[1] === 'aula')) {
-    const isClass = fixedWord[1] === 'aula' || !!subject;
-    let name = item.title.replace(/^(?:eu\s+)?(?:tenho|faço|faco)\s+/i, '').replace(/^(?:minha|meu)\s+/i, '');
-    if (isClass) name = subject ? subject.name : cap(name.replace(/^aula\s+(?:de\s+|da\s+|do\s+)?/i, ''));
-    return { type: 'schedule', block: isClass ? 'class' : 'fixed', name: cap(name) || cap(fixedWord[1]), subjectId: subject ? subject.id : null, days, start: item.time, end: item.endTime || hhmm((Number(item.time.slice(0, 2)) + 2) % 24, Number(item.time.slice(3))) };
+  // "aula de cálculo 2 segunda e quarta das 10 às 12", "estágio de segunda a sexta das 13 às 18",
+  // "aulas de análise de circuitos às quintas das 21:20 às 23 e sexta das 18:20 às 20:20"
+  const fixedWord = /^(?:(?:eu\s+)?(?:tenho|faco)\s+)?(?:minhas?\s+|meus?\s+)?(aulas?|estagio|trabalho|academia|treino|monitoria|curso|ingles|laboratorio|lab)\b/.exec(text);
+  if (!fixedWord) return null;
+  const mine = spans.filter((sp) => sp.s >= seg.s && sp.e <= seg.e).sort((a, b) => a.s - b.s);
+  const dayOf = (sp) => (sp.kind === 'rec' && sp.repeat.freq === 'weekly' && sp.repeat.days ? sp.repeat.days : sp.kind === 'date' && sp.weekday ? sp.days : null);
+  const slots = [];
+  let routine = /^aulas$/.test(fixedWord[1]);
+  mine.forEach((sp, k) => {
+    const days = dayOf(sp);
+    if (!days) return;
+    if (sp.kind === 'rec' || sp.plural || days.length > 1) routine = true;
+    const next = mine.slice(k + 1).find((x) => x.kind === 'time' || dayOf(x));
+    const time = next && next.kind === 'time' ? next : null;
+    if (time) slots.push({ days, start: hhmm(pmGuess(time.h, time.sure || time.h2 !== undefined), time.mi), end: time.h2 !== undefined ? hhmm(time.h2, time.mi2) : null });
+  });
+  if (mine.filter((sp) => dayOf(sp)).length > 1) routine = true;
+  const isClass = /^aula/.test(fixedWord[1]) || !!subject;
+  if (!slots.length || !routine || !(isClass || slots.every((sl) => sl.end))) return null;
+  slots.forEach((sl) => {
+    if (!sl.end) sl.end = hhmm((Number(sl.start.slice(0, 2)) + 2) % 24, Number(sl.start.slice(3)));
+  });
+  // nome: o que foi dito antes do primeiro dia ou horário
+  const firstSpan = mine.find((sp) => dayOf(sp) || sp.kind === 'time');
+  let w = [];
+  for (let k = seg.s; k < firstSpan.s; k++) if (t[k].kind !== 'p' && !mine.some((sp) => k >= sp.s && k < sp.e)) w.push(t[k]);
+  while (w.length && ['eu', 'tenho', 'faco', 'minha', 'minhas', 'meu', 'meus'].includes(w[0].n)) w.shift();
+  if (isClass && w.length && /^aulas?$/.test(w[0].n)) w.shift();
+  while (w.length && ['de', 'da', 'do'].includes(w[0].n)) w.shift();
+  while (w.length > 1 && TRAILING.has(w[w.length - 1].n)) w.pop();
+  // a pessoa recomeçou o nome ("circuitos análise de circuitos"): vale a versão completa
+  for (let k = 1; k * 2 <= w.length; k++) {
+    if (w.slice(0, k).every((x, n) => x.n === w[w.length - k + n].n)) {
+      w = w.slice(k);
+      break;
+    }
   }
-  return null;
+  const name = subject ? subject.name : cap(w.map((x) => x.raw).join(' ')) || cap(fixedWord[1]);
+  return { type: 'schedule', block: isClass ? 'class' : 'fixed', name, subjectId: subject ? subject.id : null, days: slots[0].days, start: slots[0].start, end: slots[0].end, ...(slots.length > 1 ? { slots } : null) };
 }
 
 const QUESTION = /^(?:o que|oque|quais?|quanto|quanta|quantas|quantos|quando (?:e|eh|vai|sera|que|tenho|eu tenho|vence|cai|sai|foi)\b|como (?:ta|esta|estao|anda)|(?:eu )?(?:tenho|tem) (?:alguma|algum|algo)|posso faltar)/;
@@ -1149,6 +1219,18 @@ export function parse(text, ctx = {}) {
       });
     }
   }
+  // "... e depois disso arrumar o quarto em 30 minutos": depois de algo com duração, "em N minutos" também é duração
+  merged.forEach((b, i) => {
+    const prev = i > 0 ? merged[i - 1].item : null;
+    const seq = b.item._seq || t.slice(Math.max(0, b.seg.s - 3), b.seg.s + 1).some((w) => ['depois', 'seguida', 'disso'].includes(w.n));
+    if (seq && b.item._rel && prev && prev.duration && !prev.time) {
+      b.item.duration = b.item._rel;
+      b.item.date = prev.date;
+      b.item.time = null;
+    }
+    delete b.item._seq;
+    delete b.item._rel;
+  });
   merged.forEach((b) => {
     const special = specialOf(t, b.seg, spans, full, b);
     if (special) {

@@ -113,6 +113,20 @@ eq('pergunta quando', P('quando é a prova de cálculo 2').query.q, 'when');
 eq('pergunta faltas', P('quantas faltas eu tenho em física').query, { q: 'absences', subjectId: 's2' });
 eq('"quando eu chegar" não é pergunta', P('quando eu chegar em casa lavar a louça').query, null);
 
+
+// ── campo Testes nº 5 e 6 (11/11) e frases parecidas ──
+eq('nº 5: aulas em dois dias com horários diferentes', parse('Aulas de circuitos análise de circuitos a as quintas-feiras das 21:20 até às 23 e sexta-feira das 18:20 até às 20:20 que isso te.', { now, subjects: [] }).actions[0], { type: 'schedule', block: 'class', name: 'Análise de circuitos', subjectId: null, days: [4], start: '21:20', end: '23:00', slots: [{ days: [4], start: '21:20', end: '23:00' }, { days: [5], start: '18:20', end: '20:20' }] });
+eq('aula no plural do dia', P('tenho aula de inglês às terças das 19 às 20:30').actions[0], { type: 'schedule', block: 'class', name: 'Inglês', subjectId: null, days: [2], start: '19:00', end: '20:30' });
+eq('aulas de X, um dia só', [P('aulas de química toda quarta das 8 às 10').actions[0].name, P('aulas de química toda quarta das 8 às 10').actions[0].days], ['Química', [3]]);
+eq('uma aula avulsa continua sendo item', P('aula de cálculo 2 segunda das 10 às 12').items.map(brief), ['study|Aula de cálculo 2|11-16|10:00']);
+const dur = (text) => P(text).items.map((i) => `${i.title}|${i.date ? i.date.slice(5) : '-'}|${i.time || '-'}|${i.duration || '-'}`);
+eq('nº 6: duração e sequência', dur('Eu tenho 10 minutos para lavar louça e depois disso eu tenho que arrumar o quarto em 30 minutos.'), ['Lavar louça|11-10|-|10', 'Arrumar o quarto|11-10|-|30']);
+eq('por N minutos', dur('estudar por 40 minutos e depois descansar em 10 minutos'), ['Estudar|11-10|-|40', 'Descansar|11-10|-|10']);
+eq('"em 4 horas" sozinho continua sendo quando começa', dur('tomar remédio em 4 horas'), ['Tomar remédio|11-10|18:00|-']);
+eq('tenho meia hora para', dur('tenho meia hora para arrumar a mochila'), ['Arrumar a mochila|11-10|-|30']);
+const two = applyActions([], parse('Aulas de circuitos análise de circuitos a as quintas-feiras das 21:20 até às 23 e sexta-feira das 18:20 até às 20:20', { now, subjects: [] }).actions, now).blocks;
+eq('matéria criada com os dois horários', [two[0].name, two[0].slots.length], ['Análise de circuitos', 2]);
+
 // ── regras ──
 let st = { ...EMPTY_STATE, items: [], blocks: [] };
 const add = (text) => {

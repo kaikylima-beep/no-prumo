@@ -44,6 +44,7 @@ export function makeItem(p, now = new Date()) {
     repeat: p.repeat || null,
     remind: p.remind ?? null,
     note: p.note || '',
+    duration: p.duration || null,
     done: false,
     doneAt: null,
     createdAt: now.getTime(),
@@ -348,9 +349,11 @@ export function applyActions(blocks, actions, now = new Date()) {
   actions.forEach((a) => {
     if (a.type === 'schedule') {
       const b = find(a) || makeBlock({ kind: a.block, name: a.name }, out);
-      const slot = { days: a.days, start: a.start, end: a.end };
-      const same = (b.slots || []).some((s) => s.start === slot.start && s.end === slot.end && s.days.join() === slot.days.join());
-      upsert(same ? b : { ...b, slots: [...(b.slots || []), slot] });
+      let slots = b.slots || [];
+      (a.slots || [{ days: a.days, start: a.start, end: a.end }]).forEach((slot) => {
+        if (!slots.some((s) => s.start === slot.start && s.end === slot.end && s.days.join() === slot.days.join())) slots = [...slots, { days: slot.days, start: slot.start, end: slot.end }];
+      });
+      upsert({ ...b, slots });
       notes.push(`${b.name}: horário guardado`);
     } else if (a.type === 'grade') {
       const b = find(a) || (a.subjectName ? makeBlock({ kind: 'class', name: a.subjectName }, out) : null);
