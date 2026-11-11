@@ -1,11 +1,13 @@
 // Contas, saldo e extrato. As regras de saldo e de conferência são as mesmas da 1.12
 // (src/legacy/accounts.js, já conferidas com extrato real); aqui só se traduz o formato.
 import { accountsSummary, dupChanges, linkChanges, reconcile } from '../legacy/accounts.js';
+import { CHARGES, REFUND, learnedCategory } from '../legacy/financeFixes.js';
+export { REFUND };
 import { newId } from './model.js';
 
-const CAT_IN = { Salário: 'Salário', Bônus: 'Extra', Extra: 'Extra', Investimentos: 'Extra', Outros: 'Extra' };
-const CAT_OUT = { Alimentação: 'Alimentação', Transporte: 'Transporte', Contas: 'Moradia', Saúde: 'Saúde', Estudos: 'Estudos', Lazer: 'Lazer', Parcelas: 'Compras', Cartão: 'Outros', Outros: 'Outros' };
-export const mapCategory = (cat, flow) => (flow === 'in' ? CAT_IN[cat] || 'Extra' : CAT_OUT[cat] || (cat && Object.values(CAT_OUT).includes(cat) ? cat : 'Outros'));
+const CAT_IN = { Salário: 'Salário', Bônus: 'Extra', Extra: 'Extra', Investimentos: 'Investimentos', Outros: 'Extra', Bolsa: 'Bolsa', [REFUND]: REFUND };
+const CAT_OUT = { Alimentação: 'Alimentação', Transporte: 'Transporte', Contas: 'Moradia', Saúde: 'Saúde', Estudos: 'Estudos', Lazer: 'Lazer', Parcelas: 'Compras', Cartão: 'Cartão', Outros: 'Outros', [CHARGES]: CHARGES, [REFUND]: REFUND };
+export const mapCategory = (cat, flow) => (flow === 'in' ? CAT_IN[cat] || (Object.values(CAT_IN).includes(cat) ? cat : 'Extra') : CAT_OUT[cat] || (['Moradia', 'Compras'].includes(cat) ? cat : 'Outros'));
 
 export const ACCOUNT_KINDS = [
   { v: 'corrente', label: 'Conta' },
@@ -16,8 +18,8 @@ export const ACCOUNT_KINDS = [
 ];
 
 // item do Prumo novo -> formato que as regras antigas entendem
-export const toLegacy = (it) => ({ id: it.id, title: it.title, amount: it.amount, date: it.date, type: it.flow, status: it.done ? 'paid' : 'pending', category: it.category, account: it.account || null, from: it.from || null, to: it.to || null, importId: it.importId || null, createdAt: it.createdAt });
-const legacyMoney = (items) => items.filter((i) => i.type === 'money' && i.date).map(toLegacy);
+export const toLegacy = (it) => ({ id: it.id, title: it.title, amount: it.amount, date: it.date, type: it.flow, sameAs: it.sameAs || undefined, status: it.done ? 'paid' : 'pending', category: it.category, account: it.account || null, from: it.from || null, to: it.to || null, importId: it.importId || null, createdAt: it.createdAt });
+export const legacyMoney = (items) => items.filter((i) => i.type === 'money' && i.date).map(toLegacy);
 
 // Saldo de cada conta e o total ("Saldo atual")
 export function balances(state) {
@@ -40,7 +42,6 @@ export function cleanTitle(title) {
   return t || String(title || '').trim();
 }
 
-const REFUND = /\bdev(?:\.|olu[cç][aã]o)?\s*(?:de\s+)?pix\b|\bpix\s+devolvido\b|\bestorno\b/i;
 
 // ───────── importar extrato ─────────
 
@@ -63,16 +64,28 @@ export function prepareImport(read, state, accChoice) {
   const isCard = read.kind === 'fatura';
   const accId = accChoice === 'new' ? NEW_ACCOUNT : accChoice === 'none' ? null : accChoice;
   const list = accChoice === 'new' ? [...accounts, { id: NEW_ACCOUNT, name: 'Nova', kind: isCard ? 'cartao' : 'corrente' }] : accounts;
-  const plain = read.items.map((it) => ({ title: cleanTitle(it.title), category: it.category, amount: it.amount, type: it.type, dir: it.type === 'transfer' ? it.dir || 0 : undefined, date: it.date, hint: it.hint || '', payslip: !!it.payslip || !!(read.meta && read.meta.payslip), source: it.source || '', selected: true }));
-  // Pix que foi e voltou: os dois lados deixam de contar como gasto e como entrada
-  plain.forEach((r, i) => {
-    if (r.type !== 'in' || !REFUND.test(`${r.source} ${r.title}`)) return;
-    const j = plain.findIndex((o, k) => k !== i && o.type === 'out' && !o.refund && Math.abs(o.amount - r.amount) < 0.005 && o.date <= r.date && (Date.parse(r.date) - Date.parse(o.date)) / 864e5 <= 5);
-    if (j < 0) return;
-    [[r, 1], [plain[j], -1]].forEach(([x, dir]) => Object.assign(x, { type: 'transfer', dir, refund: true, hint: 'Pix devolvido: não conta como gasto nem como entrada' }));
+  // títulos, Pix devolvido, juros e rendimento já vêm arrumados pelo leitor da 1.13.1
+  const existing = legacyMoney(state.items);
+  const plain = read.items.map((it) => {
+    let category = it.category;
+    // categoria aprendida: o mesmo nome que você já classificou ganha a mesma categoria
+    if (it.type !== 'transfer' && (!category || category === 'Outros')) {
+      const learned = learnedCategory(it.title, it.type, existing);
+      if (learned) category = learned.category;
+    }
+    return { title: cleanTitle(it.title), category, amount: it.amount, type: it.type, dir: it.type === 'transfer' ? it.dir || 0 : undefined, date: it.date, sameAs: it.sameAs, hint: it.hint || '', payslip: !!it.payslip || !!(read.meta && read.meta.payslip), source: it.source || '', selected: true };
   });
-  const rec = reconcile(plain, legacyMoney(state.items), accId, list);
-  return rec.map((x, k) => ({ ...x, key: `r${k}`, source: plain[k].source, refund: !!plain[k].refund, selected: x.action === 'dup' ? false : true }));
+  const rec = reconcile(plain, existing, accId, list);
+  // ao contrário também: o que já está no app guardou a outra data dele (sameAs)
+  const used = new Set(rec.filter((x) => x.targetId).map((x) => x.targetId));
+  rec.forEach((x, k) => {
+    if (x.action !== 'add' || x.type === 'transfer') return;
+    const e = existing.find((e) => !used.has(e.id) && (e.sameAs || []).includes(x.date) && Math.abs(e.amount - x.amount) < 0.005 && e.type === x.type && (e.account == null || e.account === accId));
+    if (!e) return;
+    used.add(e.id);
+    rec[k] = { ...x, action: 'dup', targetId: e.id, hint: 'Já está no app (o mesmo lançamento, com a data do outro extrato)' };
+  });
+  return rec.map((x, k) => ({ ...x, key: `r${k}`, source: plain[k].source, sameAs: plain[k].sameAs, refund: x.category === REFUND, selected: x.action === 'dup' ? false : true }));
 }
 
 // Grava a importação. Devolve { state, added, linked, adopted }.
@@ -118,7 +131,7 @@ export function applyImport(state, read, rows, { accChoice, newName, useBalance 
   const added = [];
   rows.forEach((r) => {
     if (!r.selected || r.action === 'link' || (r.action === 'dup' && r.convert)) return;
-    const base = { id: newId(), type: 'money', title: r.title, date: r.date, time: null, endTime: null, repeat: null, remind: null, note: r.source && r.source !== r.title ? r.source : '', done: true, doneAt: now.getTime(), createdAt: now.getTime(), amount: r.amount, importId };
+    const base = { id: newId(), type: 'money', title: r.title, date: r.date, ...(r.sameAs && r.sameAs.length ? { sameAs: r.sameAs } : null), time: null, endTime: null, repeat: null, remind: null, note: r.source && r.source !== r.title ? r.source : '', done: true, doneAt: now.getTime(), createdAt: now.getTime(), amount: r.amount, importId };
     if (r.type === 'transfer') {
       const dir = r.dir || 0;
       added.push({ ...base, flow: 'transfer', category: 'Transferência', account: null, from: dir < 0 ? accId : r.fromAccount || null, to: dir > 0 ? accId : r.toAccount || null });

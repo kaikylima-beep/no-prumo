@@ -291,11 +291,17 @@ const imp1 = applyImport(ms, ext, rows1, { accChoice: 'new', newName: 'Banco A' 
 eq('extrato importado', [imp1.added, imp1.state.accounts.length, imp1.state.items.every((i) => i.type === 'money' && i.done && i.account === imp1.state.accounts[0].id || i.flow === 'transfer')], [6, 1, true]);
 const rows2 = prepareImport(ext, imp1.state, imp1.state.accounts[0].id);
 eq('reimportar: tudo já existe', [rows2.every((r) => r.action === 'dup' && !r.selected), applyImport(imp1.state, ext, rows2, { accChoice: imp1.state.accounts[0].id }, now).added], [true, 0]);
-const refund = prepareImport({ kind: 'extrato', meta: {}, items: [{ title: 'Pix enviado Bruno', amount: 60, type: 'out', category: 'Outros', date: '2026-11-03', source: 'PIX ENVIADO BRUNO' }, { title: 'Dev Pix Bruno', amount: 60, type: 'in', category: 'Outros', date: '2026-11-04', source: 'DEV PIX BRUNO' }, { title: 'Mercado', amount: 60, type: 'out', category: 'Alimentação', date: '2026-11-04', source: 'MERCADO' }] }, ms, 'new');
-eq('Pix devolvido se anula', refund.map((r) => [r.type, r.refund]), [['transfer', true], ['transfer', true], ['out', false]]);
-const impR = applyImport(ms, { kind: 'extrato', meta: { balance: 500, balanceDate: '2026-11-04' }, items: [] }, refund, { accChoice: 'new' }, now);
+const devTxt = 'EXTRATO\n01/11/2026 SALDO ANTERIOR 100,00\n03/11/2026 PIX RECEBIDO BRUNO 60,00\n04/11/2026 DEV PIX BRUNO -60,00\n04/11/2026 RSCSS PADARIA0311 -12,00\n05/11/2026 JUROS LIMITE -3,10\n05/11/2026 REND PAGO APLIC AUT 0,42\n05/11/2026 SALDO DO DIA 85,32\n';
+const devRead = parseDocument({ name: 'x.csv', bytes: new TextEncoder().encode(devTxt) }, '2026-11-10', []);
+const devRows = prepareImport(devRead, ms, 'new');
+eq('extrato: devolvido, padaria (data grudada), juros e rendimento', devRows.map((r) => [r.title, r.category]), [['Pix de Bruno', 'Devolvido'], ['Pix devolvido para Bruno', 'Devolvido'], ['Padaria', 'Alimentação'], ['Juros Limite', 'Tarifas e juros'], ['Rendimento', 'Investimentos']]);
+const impR = applyImport(ms, devRead, devRows, { accChoice: 'new' }, now);
 const mR = monthMoney(impR.state.items, '2026-11', {}, now);
-eq('devolução não infla o mês', [mR.in, mR.out, balances(impR.state).money], [0, 60, 500]);
+eq('devolução não infla o mês; saldo igual ao do banco', [mR.in, Math.round(mR.out * 100) / 100, balances(impR.state).money], [0.42, 15.1, 85.32]);
+const later = parseDocument({ name: 'y.csv', bytes: new TextEncoder().encode('EXTRATO\n03/11/2026 PADARIA -12,00\n03/11/2026 SALDO DO DIA 88,00\n') }, '2026-11-10', []);
+eq('mesma compra com a outra data (sameAs) já está no app', prepareImport(later, impR.state, impR.state.accounts[0].id).map((r) => r.action), ['dup']);
+const fixedCat = { ...impR.state, items: impR.state.items.map((i) => (i.title === 'Padaria' ? { ...i, category: 'Lazer' } : i)) };
+eq('categoria aprendida pela loja', prepareImport({ kind: 'extrato', meta: {}, items: [{ title: 'Padaria', amount: 9, type: 'out', category: 'Outros', date: '2026-11-09' }] }, fixedCat, 'none').map((r) => r.category), ['Lazer']);
 eq('feriados continuam', Object.keys(holidaysOfMonth('2026-11', 'PR')).map((d) => d.slice(8)), ['02', '15', '20']);
 
 console.log(`${pass} passaram, ${fails.length} falharam`);

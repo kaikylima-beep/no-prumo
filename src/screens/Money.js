@@ -197,7 +197,7 @@ export default function Money() {
       ) : null}
 
       {m.moved.length ? (
-        <Section title="Entre suas contas" count={m.moved.length}>
+        <Section title="Entre suas contas e devolvidos" count={m.moved.length}>
           {m.moved.slice(0, all ? 999 : 5).map((it) => (
             <ItemRow key={it.id} item={it} compact plain />
           ))}

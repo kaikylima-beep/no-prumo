@@ -732,8 +732,8 @@ const MONEY_NOUN = new Set(['pix', 'boleto', 'fatura', 'aluguel', 'mensalidade',
 const MONEY_NOUN_IN = new Set(['salario', 'bolsa', 'mesada', 'pagamento', 'reembolso', 'freela', 'freelance', 'comissao', 'estagio', 'decimo', 'ferias', 'vale']);
 const BILL_NOUN = new Set(['luz', 'agua', 'internet', 'gas', 'telefone', 'celular', 'energia', 'netflix', 'spotify', 'cartao', 'academia', 'plano']);
 
-export const CATEGORIES_OUT = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Estudos', 'Lazer', 'Compras', 'Outros'];
-export const CATEGORIES_IN = ['Salário', 'Bolsa', 'Extra'];
+export const CATEGORIES_OUT = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Estudos', 'Lazer', 'Compras', 'Cartão', 'Tarifas e juros', 'Outros'];
+export const CATEGORIES_IN = ['Salário', 'Bolsa', 'Investimentos', 'Extra'];
 const CATEGORY_WORDS = {
   Alimentação: ['mercado', 'supermercado', 'ifood', 'lanche', 'almoco', 'janta', 'jantar', 'pizza', 'restaurante', 'padaria', 'cafe', 'pao', 'comida', 'acai', 'hamburguer', 'marmita', 'feira', 'acougue', 'bandejao', 'ru', 'cantina', 'salgado', 'sorvete', 'cerveja', 'lanchonete', 'delivery', 'rappi', 'burger'],
   Transporte: ['uber', '99', 'onibus', 'gasolina', 'combustivel', 'passagem', 'metro', 'estacionamento', 'pedagio', 'taxi', 'bilhete', 'mecanico', 'oficina', 'ipva', 'etanol', 'posto', 'corrida'],

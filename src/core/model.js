@@ -246,8 +246,8 @@ export function monthMoney(items, key, settings = DEFAULT_SETTINGS, now = new Da
   const r = { key, in: 0, out: 0, toPay: 0, toReceive: 0, byCategory: {}, paid: [], pending: [], moved: [] };
   items.forEach((it) => {
     if (it.type !== 'money' || !it.date || monthKey(it.date) !== key) return;
-    // transferência entre contas suas não é gasto nem renda
-    if (it.flow === 'transfer') return r.moved.push(it);
+    // transferência entre contas suas e Pix devolvido não são gasto nem renda
+    if (it.flow === 'transfer' || it.category === 'Devolvido') return r.moved.push(it);
     if (it.done) {
       if (it.flow === 'in') r.in += it.amount;
       else {

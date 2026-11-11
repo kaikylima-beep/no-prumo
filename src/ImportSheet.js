@@ -52,6 +52,11 @@ export default function ImportSheet({ read, onClose }) {
         </T>
       ) : null}
 
+      {meta.gap ? (
+        <T v="s" c="warn" style={{ marginTop: 8 }}>
+          O extrato do banco não fecha: o saldo de {day(meta.gap.date)} tem {formatMoney(meta.gap.amount)} que não aparecem nos lançamentos (costuma ser o rendimento do dia). O saldo da conta fica igual ao do banco; nenhum lançamento é inventado.
+        </T>
+      ) : null}
       <Row style={{ marginTop: 18 }}>
         <T v="l" c="faint" style={{ flex: 1 }}>
           {chosen.length} de {rows.length} marcados
