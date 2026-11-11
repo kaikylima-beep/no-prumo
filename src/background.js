@@ -7,8 +7,8 @@ import { sanitize } from './core/migrate';
 import { addDays, hhmm, todayISO } from './core/dates';
 import { syncReminders } from './notify';
 
-export const STATE_KEY = '@peep/state';
-const TASK = 'peep-botoes-dos-avisos';
+export const STATE_KEY = '@prumo/state';
+const TASK = 'meu-organizador-botoes-dos-avisos';
 const seen = new Set();
 const listeners = new Set();
 export const onExternalChange = (fn) => {

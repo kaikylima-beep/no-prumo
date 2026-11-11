@@ -2,15 +2,16 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 
-const base = {
-  brand: '#FFC83D',
-  onBrand: '#191400',
-};
+// Marca do Prumo: tinta escura, papel claro e as três cores das áreas (sem amarelo).
+const base = { ink: '#12151C', ring: ['#2457E6', '#0B7A52', '#6B3FD4'] };
 export const PALETTES = {
   light: {
     ...base,
     dark: false,
-    bg: '#F5F4EF',
+    brand: '#12151C',
+    onBrand: '#F7F6F2',
+    undo: '#8FADFF',
+    bg: '#F7F6F2',
     card: '#FFFFFF',
     sunken: '#ECEAE3',
     line: '#E2DFD6',
@@ -33,7 +34,10 @@ export const PALETTES = {
   dark: {
     ...base,
     dark: true,
-    bg: '#0F1115',
+    brand: '#F2F1EC',
+    onBrand: '#12151C',
+    undo: '#2457E6',
+    bg: '#0E1117',
     card: '#191C22',
     sunken: '#14161B',
     line: '#2A2E37',
@@ -81,6 +85,7 @@ export const ICONS = {
   book: require('../assets/ic/book.png'),
   wallet: require('../assets/ic/wallet.png'),
   mic: require('../assets/ic/mic.png'),
+  glyph: require('../assets/ui/glyph.png'),
   plus: require('../assets/ic/plus.png'),
   check: require('../assets/ic/check.png'),
   close: require('../assets/ic/close.png'),

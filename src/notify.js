@@ -9,7 +9,8 @@ try {
   N = null;
 }
 const on = () => !!N && Platform.OS !== 'web';
-const CH = { som: 'peep-avisos', quieto: 'peep-avisos-quietos' };
+// ids iguais aos da 1.12: trocar faria o Android perder os ajustes que a pessoa fez nos avisos
+const CH = { som: 'lembretes-som', quieto: 'lembretes-vibrar' };
 const VIBRATION = [0, 350, 180, 350];
 let ready = false;
 
@@ -20,8 +21,8 @@ async function setup() {
   });
   if (Platform.OS === 'android') {
     const common = { importance: N.AndroidImportance.MAX, enableVibrate: true, vibrationPattern: VIBRATION, lockscreenVisibility: N.AndroidNotificationVisibility.PUBLIC };
-    await N.setNotificationChannelAsync(CH.som, { name: 'Avisos com som', ...common });
-    await N.setNotificationChannelAsync(CH.quieto, { name: 'Avisos só com vibração', ...common, sound: null });
+    await N.setNotificationChannelAsync(CH.som, { name: 'Lembretes com som e vibração', ...common });
+    await N.setNotificationChannelAsync(CH.quieto, { name: 'Lembretes só com vibração', ...common, sound: null });
   }
   try {
     const bg = { opensAppToForeground: false };
@@ -98,7 +99,7 @@ export async function testAlert(sound = true) {
   if (!(await ensure(true))) return false;
   try {
     await N.scheduleNotificationAsync({
-      content: { title: 'Peep', body: 'É assim que eu vou te avisar.', sound, vibrate: VIBRATION, priority: 'max' },
+      content: { title: 'Prumo', body: 'É assim que eu vou te avisar.', sound, vibrate: VIBRATION, priority: 'max' },
       trigger: { type: N.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: sound ? CH.som : CH.quieto },
     });
     return true;

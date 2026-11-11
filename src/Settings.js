@@ -23,7 +23,7 @@ export default function Settings({ onClose }) {
 
   const save = async () => {
     const d = new Date();
-    const name = `peep-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`;
+    const name = `no-prumo-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`;
     const r = await saveText(name, JSON.stringify(makeBackup(state, d)));
     setBusy(r.ok ? `Salvo: ${name}` : r.error || '');
   };
@@ -66,7 +66,7 @@ export default function Settings({ onClose }) {
         </View>
         <Segmented value={st.sound === false ? 'v' : 's'} onChange={(v) => setSettings({ sound: v === 's' })} options={[{ value: 's', label: 'Som e vibração' }, { value: 'v', label: 'Só vibração' }]} />
         <Row wrap>
-          <Btn small kind="soft" icon="bell" label="Testar um aviso" onPress={async () => say((await testAlert(st.sound !== false)) ? 'O aviso chega em 5 segundos' : 'Libere as notificações do Peep no celular')} />
+          <Btn small kind="soft" icon="bell" label="Testar um aviso" onPress={async () => say((await testAlert(st.sound !== false)) ? 'O aviso chega em 5 segundos' : 'Libere as notificações do Prumo no celular')} />
           {!exact ? <Btn small kind="soft" label="Liberar avisos na hora exata" onPress={async () => setExact(await askExactAlarm())} /> : null}
         </Row>
       </Card>
@@ -78,7 +78,7 @@ export default function Settings({ onClose }) {
         </T>
         <Row wrap>
           <Btn small kind="soft" label="Salvar backup" onPress={save} />
-          <Btn small kind="soft" label="Abrir backup (Peep ou Prumo)" onPress={pick} />
+          <Btn small kind="soft" label="Restaurar backup" onPress={pick} />
         </Row>
         {busy ? (
           <T v="s" c="soft">
@@ -88,10 +88,10 @@ export default function Settings({ onClose }) {
         {pending ? (
           <View style={{ gap: 8 }}>
             <T v="m">
-              {pending.from === 'prumo' ? 'Backup do Prumo' : 'Backup do Peep'}: {pending.counts.items} itens e {pending.counts.blocks} matérias.
+              {pending.from === 'prumo' ? 'Backup antigo (até a 1.12)' : 'Backup do Prumo'}: {pending.counts.items} itens e {pending.counts.blocks} matérias.
             </T>
             <T v="s" c="soft">
-              {pending.from === 'prumo' ? 'Vêm tarefas, estudos, matérias, lançamentos e contas fixas. Contas de banco e transferências ficam de fora. ' : ''}Isso troca o que está no Peep agora. Dá para desfazer logo depois.
+              {pending.from === 'prumo' ? 'Vêm tarefas, estudos, matérias, lançamentos e contas fixas. Contas de banco e transferências ficam de fora. ' : ''}Isso troca o que está no app agora. Dá para desfazer logo depois.
             </T>
             <Row>
               <Btn small label="Trazer" onPress={() => { replaceAll(pending.state, 'Backup aberto'); setPending(null); onClose(); }} />
@@ -115,7 +115,7 @@ export default function Settings({ onClose }) {
       )}
 
       <T v="s" c="faint" style={{ marginTop: 26 }}>
-        Peep {APP_VERSION} · versão de teste{speechMode() ? ` · voz: ${speechMode()}` : ''}
+        No Prumo {APP_VERSION}{speechMode() ? ` · voz: ${speechMode()}` : ''}
       </T>
     </Sheet>
   );

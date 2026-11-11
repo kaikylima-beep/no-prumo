@@ -5,7 +5,10 @@ import { EMPTY_STATE, applyActions, complete, dayAgenda, gradeInfo, absenceInfo,
 import { planReminders } from '../src/core/plan.js';
 import { answer } from '../src/core/answers.js';
 import { applyLearned, diffWords, learn } from '../src/core/learn.js';
-import { makeBackup, readBackup, sanitize } from '../src/core/migrate.js';
+import { fromOldStorage, makeBackup, readBackup, sanitize } from '../src/core/migrate.js';
+import { applyImport, balances, cleanTitle, guessAccount, prepareImport } from '../src/core/money.js';
+import { parseDocument } from '../src/legacy/documentParser.js';
+import { holidaysOfMonth } from '../src/legacy/holidays.js';
 
 const now = new Date(2026, 10, 10, 14, 0); // terça, 10/11/2026, 14h
 const subjects = [
@@ -173,7 +176,7 @@ eq('aplica', applyLearned('Fazer um Pics de 20.', dict).text, 'Fazer um pix de 2
 eq('palavra inteira', applyLearned('topics legais', dict).text, 'topics legais');
 // ── backup ──
 const back = readBackup(JSON.stringify(makeBackup(st, now)), now);
-eq('backup vai e volta', [back.from, back.state.items.length, back.state.blocks.length], ['peep', st.items.length, st.blocks.length]);
+eq('backup vai e volta', [back.from, back.state.items.length, back.state.blocks.length], ['novo', st.items.length, st.blocks.length]);
 eq('arquivo estranho', !!readBackup('{"a":1}').error && !!readBackup('nada').error, true);
 eq('dado quebrado não derruba', sanitize({ items: [null, { id: 1 }], blocks: 'x' }).items.length, 0);
 const prumo = readBackup(JSON.stringify({ app: 'no-prumo', format: 1, data: {
@@ -184,10 +187,49 @@ const prumo = readBackup(JSON.stringify({ app: 'no-prumo', format: 1, data: {
   '@org2/recurrences': JSON.stringify([{ id: 'r1', title: 'Internet', amount: 100, type: 'out', category: 'Contas', day: 12, generated: [] }]),
   '@org2/settings': JSON.stringify({ profile: { name: 'Teste' }, budget: { salary: 2000, target: 300 }, voice: { learned: { pics: { to: 'pix', n: 2 } } } }),
 } }), now);
-eq('backup do Prumo', [prumo.from, prumo.counts, prumo.state.settings.name, prumo.state.settings.monthLimit, prumo.state.settings.learned.pics.to], ['prumo', { items: 5, blocks: 1, skipped: 1 }, 'Teste', 1700, 'pix']);
+eq('backup do Prumo', [prumo.from, prumo.counts, prumo.state.settings.name, prumo.state.settings.monthLimit, prumo.state.settings.learned.pics.to], ['prumo', { items: 6, blocks: 1, accounts: 0 }, 'Teste', 1700, 'pix']);
 const pi = prumo.state.items;
-eq('Prumo: itens convertidos', pi.map((i) => [i.type, i.title, i.date, i.done, i.repeat ? i.repeat.freq : null]), [['task', 'Lavar o carro', '2026-11-12', false, null], ['task', 'Remédio', '2026-11-10', false, 'daily'], ['study', 'Prova de Cálculo', '2026-11-20', false, null], ['money', 'Mercado', '2026-11-08', true, null], ['money', 'Internet', '2026-11-12', false, 'monthly']]);
+eq('Prumo: itens convertidos', pi.map((i) => [i.type, i.title, i.date, i.done, i.repeat ? i.repeat.freq : null]), [['task', 'Lavar o carro', '2026-11-12', false, null], ['task', 'Remédio', '2026-11-10', false, 'daily'], ['study', 'Prova de Cálculo', '2026-11-20', false, null], ['money', 'Mercado', '2026-11-08', true, null], ['money', 'Entre contas', '2026-11-08', true, null], ['money', 'Internet', '2026-11-12', false, 'monthly']]);
 eq('Prumo: matéria ligada', pi[2].subjectId, prumo.state.blocks[0].id);
+
+
+// ── contas, saldo e extrato (1.13) ──
+const oldData = {
+  '@org2/accounts': JSON.stringify([{ id: 'c1', name: 'Banco A', kind: 'corrente', anchor: { balance: 1000, date: '2026-11-01', at: 1 } }, { id: 'c2', name: 'Poupança', kind: 'poupanca', anchor: { balance: 500, date: '2026-11-01', at: 1 } }, { id: 'c3', name: 'Sem saldo', kind: 'corrente', anchor: null }]),
+  '@org2/finance': JSON.stringify([
+    { id: 'f1', type: 'out', title: 'Mercado', amount: 80, category: 'Alimentação', date: '2026-11-03', status: 'paid', account: 'c1', createdAt: 5 },
+    { id: 'f2', type: 'in', title: 'Salário', amount: 2000, category: 'Salário', date: '2026-11-05', status: 'paid', account: 'c1', createdAt: 5 },
+    { id: 'f3', type: 'transfer', title: 'Guardar', amount: 300, date: '2026-11-06', status: 'paid', from: 'c1', to: 'c2', createdAt: 5 },
+    { id: 'f4', type: 'out', title: 'Luz', amount: 120, category: 'Contas', date: '2026-11-15', status: 'pending', account: 'c1', createdAt: 5 },
+    { id: 'f5', type: 'out', title: 'Antigo', amount: 999, category: 'Outros', date: '2026-10-20', status: 'paid', account: 'c1', createdAt: 0 },
+  ]),
+  '@org2/settings': JSON.stringify({ profile: { name: 'Teste', state: 'PR', occupation: 'estagio' }, theme: 'dark', alertStyle: 'vibrar', onboarded: true }),
+};
+const moved = fromOldStorage(Object.entries(oldData), now);
+const bal = balances(moved);
+eq('1.12 → 1.13: saldo por conta igual', bal.rows.map((r) => [r.name, r.balance, r.known]), [['Banco A', 2620, true], ['Poupança', 800, true], ['Sem saldo', 0, false]]);
+eq('saldo atual', [bal.money, bal.unknown], [3420, 1]);
+eq('ajustes vieram', [moved.settings.state, moved.settings.theme, moved.settings.sound, moved.settings.occupation, moved.settings.onboarded], ['PR', 'dark', false, 'estagio', true]);
+const mm = monthMoney(moved.items, '2026-11', moved.settings, now);
+eq('transferência não é gasto nem renda', [mm.in, mm.out, mm.toPay, mm.moved.length], [2000, 80, 120, 1]);
+eq('sem dados antigos', fromOldStorage([['@org2/tasks', null]]), null);
+eq('título limpo', ['RSCSS Padaria Central0711', 'Pix enviado 57251234', 'PAY Lanchonete Boa', 'Mercado Bom Preco', 'Loja 24 Horas'].map(cleanTitle), ['Padaria Central', 'Pix enviado', 'Lanchonete Boa', 'Mercado Bom Preco', 'Loja 24 Horas']);
+const fs = await import('node:fs');
+const readFix = (f) => parseDocument({ name: f, bytes: new Uint8Array(fs.readFileSync(new URL(`./fixtures/${f}`, import.meta.url))) }, '2026-11-10', []);
+const ext = readFix('extrato.pdf');
+let ms = { ...EMPTY_STATE, items: [], accounts: [] };
+eq('conta sugerida', guessAccount(ext.meta, ext.kind, ms.accounts), 'new');
+const rows1 = prepareImport(ext, ms, 'new');
+const imp1 = applyImport(ms, ext, rows1, { accChoice: 'new', newName: 'Banco A' }, now);
+eq('extrato importado', [imp1.added, imp1.state.accounts.length, imp1.state.items.every((i) => i.type === 'money' && i.done && i.account === imp1.state.accounts[0].id || i.flow === 'transfer')], [6, 1, true]);
+const rows2 = prepareImport(ext, imp1.state, imp1.state.accounts[0].id);
+eq('reimportar: tudo já existe', [rows2.every((r) => r.action === 'dup' && !r.selected), applyImport(imp1.state, ext, rows2, { accChoice: imp1.state.accounts[0].id }, now).added], [true, 0]);
+const refund = prepareImport({ kind: 'extrato', meta: {}, items: [{ title: 'Pix enviado Bruno', amount: 60, type: 'out', category: 'Outros', date: '2026-11-03', source: 'PIX ENVIADO BRUNO' }, { title: 'Dev Pix Bruno', amount: 60, type: 'in', category: 'Outros', date: '2026-11-04', source: 'DEV PIX BRUNO' }, { title: 'Mercado', amount: 60, type: 'out', category: 'Alimentação', date: '2026-11-04', source: 'MERCADO' }] }, ms, 'new');
+eq('Pix devolvido se anula', refund.map((r) => [r.type, r.refund]), [['transfer', true], ['transfer', true], ['out', false]]);
+const impR = applyImport(ms, { kind: 'extrato', meta: { balance: 500, balanceDate: '2026-11-04' }, items: [] }, refund, { accChoice: 'new' }, now);
+const mR = monthMoney(impR.state.items, '2026-11', {}, now);
+eq('devolução não infla o mês', [mR.in, mR.out, balances(impR.state).money], [0, 60, 500]);
+eq('feriados continuam', Object.keys(holidaysOfMonth('2026-11', 'PR')).map((d) => d.slice(8)), ['02', '15', '20']);
 
 console.log(`${pass} passaram, ${fails.length} falharam`);
 if (fails.length) {

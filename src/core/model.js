@@ -11,8 +11,20 @@ export const DEFAULT_SETTINGS = {
   sound: true,
   learned: {}, // { 'pics': { to: 'pix', n: 2 } }
   onboarded: false,
+  // vindos da 1.12
+  age: '',
+  photo: null,
+  occupation: null, // 'trabalho' | 'estagio' | 'outros' | 'so_estudo'
+  occupationName: '',
+  state: '', // UF, para os feriados
+  shortTitles: false,
+  autoListen: true,
+  voiceOnDevice: true,
+  semester: { start: null, end: null },
+  testMode: false,
+  backupAt: null,
 };
-export const EMPTY_STATE = { v: 1, items: [], blocks: [], settings: DEFAULT_SETTINGS };
+export const EMPTY_STATE = { v: 1, items: [], blocks: [], accounts: [], heardLog: [], settings: DEFAULT_SETTINGS };
 
 let seq = 0;
 export const newId = () => `${Date.now().toString(36)}${(seq++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -43,8 +55,14 @@ export function makeItem(p, now = new Date()) {
   }
   if (item.type === 'money') {
     item.amount = Number(p.amount) || 0;
-    item.flow = p.flow === 'in' ? 'in' : 'out';
-    item.category = p.category || (item.flow === 'in' ? 'Extra' : 'Outros');
+    item.flow = p.flow === 'in' || p.flow === 'transfer' ? p.flow : 'out';
+    item.category = item.flow === 'transfer' ? 'Transferência' : p.category || (item.flow === 'in' ? 'Extra' : 'Outros');
+    item.account = item.flow === 'transfer' ? null : p.account || null;
+    if (item.flow === 'transfer') {
+      item.from = p.from || null;
+      item.to = p.to || null;
+    }
+    if (p.importId) item.importId = p.importId;
     item.time = null;
     item.endTime = null;
     if (p.paid) {
@@ -221,9 +239,11 @@ export function freeSlots(agenda, from = '07:00', to = '23:00') {
 // ───────── dinheiro ─────────
 
 export function monthMoney(items, key, settings = DEFAULT_SETTINGS, now = new Date()) {
-  const r = { key, in: 0, out: 0, toPay: 0, toReceive: 0, byCategory: {}, paid: [], pending: [] };
+  const r = { key, in: 0, out: 0, toPay: 0, toReceive: 0, byCategory: {}, paid: [], pending: [], moved: [] };
   items.forEach((it) => {
     if (it.type !== 'money' || !it.date || monthKey(it.date) !== key) return;
+    // transferência entre contas suas não é gasto nem renda
+    if (it.flow === 'transfer') return r.moved.push(it);
     if (it.done) {
       if (it.flow === 'in') r.in += it.amount;
       else {
@@ -370,5 +390,5 @@ export function repeatText(r) {
   if (r.freq === 'monthly') return `todo dia ${r.day || 1}`;
   return '';
 }
-export const moneyText = (it, hide) => `${it.flow === 'in' ? '+' : '−'} ${hide ? 'R$ •••' : formatMoney(it.amount)}`;
+export const moneyText = (it, hide) => `${it.flow === 'in' ? '+' : it.flow === 'transfer' ? '⇄' : '−'} ${hide ? 'R$ •••' : formatMoney(it.amount)}`;
 export { at };

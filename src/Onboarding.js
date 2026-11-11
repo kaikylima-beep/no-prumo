@@ -26,10 +26,10 @@ export default function Onboarding() {
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 28, paddingBottom: Math.max(insets.bottom, 16) + 8, paddingHorizontal: 24 }}>
       <Image source={require('../assets/icon.png')} style={{ width: 72, height: 72, borderRadius: 20 }} />
       <T v="hero" style={{ marginTop: 18 }}>
-        Oi, eu sou o Peep.
+        Fala. Tá no prumo.
       </T>
       <T c="soft" style={{ marginTop: 6 }}>
-        Você fala, eu organizo. Tudo fica só no seu celular.
+        Você fala, o Prumo organiza. Tudo fica só no seu celular.
       </T>
       <View style={{ marginTop: 26, gap: 18 }}>
         {POINTS.map(([icon, title, text]) => (

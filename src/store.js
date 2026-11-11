@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EMPTY_STATE, applyActions, complete, makeItem, reopen } from './core/model';
-import { sanitize } from './core/migrate';
+import { OLD_KEYS, fromOldStorage, sanitize } from './core/migrate';
 import { syncReminders } from './notify';
 import { STATE_KEY, onExternalChange } from './background';
 
@@ -24,6 +24,11 @@ export function StoreProvider({ children }) {
     try {
       const raw = await AsyncStorage.getItem(STATE_KEY);
       if (raw) setState(sanitize(JSON.parse(raw)));
+      else {
+        // veio da 1.12: converte os dados antigos. As chaves antigas ficam como estão.
+        const old = fromOldStorage(await AsyncStorage.multiGet(OLD_KEYS));
+        if (old) setState(sanitize(old));
+      }
     } catch (e) {
       // dado ilegível: começa vazio, sem apagar nada do armazenamento
     }

@@ -81,7 +81,7 @@ export default function Today() {
             </>
           ) : null}
           {nn.next ? (
-            <View style={nn.current ? { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(25,20,0,0.15)' } : null}>
+            <View style={nn.current ? { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.dark ? 'rgba(18,21,28,0.15)' : 'rgba(247,246,242,0.2)' } : null}>
               <T v="l" c="onBrand" style={{ opacity: 0.7 }}>
                 {nn.current ? 'Depois' : 'A seguir'}
               </T>

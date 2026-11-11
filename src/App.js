@@ -1,8 +1,8 @@
 // Casca do app: 4 telas, o botão de falar no meio, as folhas e o aviso de "Desfazer".
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Pressable, View } from 'react-native';
+import { BackHandler, Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from './theme';
+import { ICONS, useTheme } from './theme';
 import { Icon, Row, T } from './ui';
 import { useStore } from './store';
 import { Nav } from './nav';
@@ -79,8 +79,10 @@ export default function App() {
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.line, paddingBottom: insets.bottom, paddingHorizontal: 4 }}>
           {TABS.slice(0, 2).map(tabButton)}
           <View style={{ width: 84, alignItems: 'center' }}>
-            <Pressable onPress={() => open('capture', { voice: true })} onLongPress={() => open('capture', { voice: false })} accessibilityRole="button" accessibilityLabel="Falar com o Peep" aria-label="Falar com o Peep" style={({ pressed }) => ({ width: 66, height: 66, borderRadius: 33, marginTop: -26, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: c.bg, transform: [{ scale: pressed ? 0.94 : 1 }] })}>
-              <Icon name="mic" size={28} color={c.onBrand} />
+            <Pressable onPress={() => open('capture', { voice: true })} onLongPress={() => open('capture', { voice: false })} accessibilityRole="button" accessibilityLabel="Falar com o Prumo" aria-label="Falar com o Prumo" style={({ pressed }) => ({ width: 70, height: 70, borderRadius: 35, marginTop: -28, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', transform: [{ scale: pressed ? 0.94 : 1 }] })}>
+              <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: c.ink, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderTopColor: c.ring[0], borderRightColor: c.ring[1], borderBottomColor: c.ring[2], borderLeftColor: c.ring[0] }}>
+                <Image source={ICONS.glyph} style={{ width: 20, height: 36 }} resizeMode="contain" />
+              </View>
             </Pressable>
           </View>
           {TABS.slice(2).map(tabButton)}
@@ -97,7 +99,7 @@ export default function App() {
               </T>
               {toast.undo ? (
                 <Pressable onPress={() => { toast.undo(); hideToast(); }} accessibilityRole="button" accessibilityLabel="Desfazer" aria-label="Desfazer" style={{ paddingHorizontal: 14, height: 44, justifyContent: 'center' }}>
-                  <T v="m" c="brand">
+                  <T v="m" c="undo">
                     Desfazer
                   </T>
                 </Pressable>
