@@ -8,7 +8,7 @@ import { pickText, saveText } from './files';
 import { makeBackup, readBackup } from './core/migrate';
 import { speechMode } from './speech';
 
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '1.13.0';
 
 export default function Settings({ onClose }) {
   const { state, setSettings, replaceAll, say } = useStore();

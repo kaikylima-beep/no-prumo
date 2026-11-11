@@ -1,16 +1,19 @@
 // Reconhecimento de voz do Android (português do Brasil).
-// Precisa do app instalado (APK / development build). No Expo Go o módulo não existe,
-// então o app avisa e a pessoa pode usar o microfone do teclado.
-//
-// 1.12.1: o app pede ao Android o melhor que o aparelho oferece e cai para o modo
-// mais simples se o aparelho recusar (LEVELS):
-//   0. reconhecimento no próprio celular, com pontuação, vocabulário e 5 versões
-//   1. serviço padrão do Android, com pontuação, vocabulário e 5 versões
-//   2. o modo da 1.12 (só o texto), com 5 versões
-// A fala pode chegar em pedaços (o Android corta nas pausas): o app junta os pedaços
-// e só interpreta quando o Android encerra a escuta.
+// O Peep pede o melhor que o aparelho oferece e cai para o modo mais simples se o aparelho recusar:
+//   0. no próprio celular, com pontuação, vocabulário e 5 versões
+//   1. serviço do Google, com pontuação, vocabulário e 5 versões
+//   2. modo simples
+// O Google é escolhido pelo nome (em alguns Samsung o serviço padrão abre o Bixby).
+// A fala pode chegar em pedaços: o app junta tudo e só interpreta quando a escuta termina.
 import { useCallback, useRef, useState } from 'react';
-import { pickService } from './voice';
+
+const GOOGLE_ON_DEVICE = 'com.google.android.as';
+const GOOGLE_SERVICES = ['com.google.android.tts', 'com.google.android.googlequicksearchbox'];
+export function pickService(list = [], onDevice = false) {
+  if (onDevice && list.includes(GOOGLE_ON_DEVICE)) return { pkg: GOOGLE_ON_DEVICE, offline: true };
+  const g = GOOGLE_SERVICES.find((p) => list.includes(p));
+  return g ? { pkg: g, offline: !!onDevice } : null;
+}
 
 let Mod = null;
 let useSpeechEvent = null;
@@ -111,8 +114,7 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
 
   const options = (level) => {
     const L = LEVELS[level];
-    // 1.12.3: Google pelo nome quando existe (no Samsung, o serviço padrão abria o Bixby)
-    const svc = pickService(availableServices(), !!L.onDevice);
+        const svc = pickService(availableServices(), !!L.onDevice);
     const base = {
       lang: 'pt-BR',
       interimResults: true,
@@ -128,7 +130,7 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
       contextualStrings: (vocab && vocab()) || [],
       // sem o Google, "no celular" fica com o serviço do sistema
       requiresOnDeviceRecognition: !!L.onDevice && !svc,
-      // guarda o áudio (Android 13+): serve para "Guardar para correção" e faz o Android esperar 2 s de silêncio
+      // com o áudio guardado (Android 13+), o Android espera 2 s de silêncio antes de encerrar
       recordingOptions: { persist: true },
       androidIntentOptions: { EXTRA_MASK_OFFENSIVE_WORDS: false, ...(svc && svc.offline ? { EXTRA_PREFER_OFFLINE: true } : null) },
     };
@@ -245,7 +247,7 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
   const start = useCallback(async () => {
     setError('');
     if (!Mod) {
-      setError('Voz indisponível neste modo (Expo Go). Instale o APK ou use o microfone do teclado.');
+      setError('A voz só funciona no app instalado. Aqui, escreva.');
       return;
     }
     try {

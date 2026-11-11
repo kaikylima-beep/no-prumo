@@ -1,57 +1,41 @@
-// Abre o app: lê o visual salvo (Simples/Avançado, claro/escuro), aplica as cores,
-// carrega as fontes e só então carrega as telas, para os estilos já nascerem certos.
+// Abre o app: carrega as fontes e os dados e só então mostra as telas.
 import React, { useEffect, useState } from 'react';
-import { View, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, useColorScheme } from 'react-native';
 import * as Font from 'expo-font';
-import { applyTheme, colors } from './theme';
-import { FONTS, setFontsReady } from './AppText';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { FONTS, PALETTES, ThemeProvider } from './theme';
+import { setFontsOk } from './ui';
+import { StoreProvider, useStore } from './store';
+import App from './App';
 
-export const SETTINGS_KEY = '@org2/settings';
-
-export async function readVisual() {
-  try {
-    const s = JSON.parse((await AsyncStorage.getItem(SETTINGS_KEY)) || '{}') || {};
-    return { layout: s.layout || 'advanced', theme: s.theme || 'light' };
-  } catch (e) {
-    return { layout: 'advanced', theme: 'light' };
-  }
-}
-
-// Reinicia o app para trocar o visual (as cores entram antes das telas)
-export async function restartApp() {
-  if (Platform.OS === 'web') {
-    window.location.reload();
-    return;
-  }
-  try {
-    const { reloadAppAsync } = require('expo');
-    await reloadAppAsync('visual');
-  } catch (e) {
-    // sem reinício automático: o novo visual aparece na próxima vez que o app abrir
-  }
+function Themed() {
+  const { state, ready } = useStore();
+  const system = useColorScheme();
+  const pick = state.settings.theme;
+  const mode = pick === 'light' || pick === 'dark' ? pick : system === 'dark' ? 'dark' : 'light';
+  return (
+    <ThemeProvider mode={mode}>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <View style={{ flex: 1, backgroundColor: PALETTES[mode].bg }}>{ready ? <App /> : null}</View>
+    </ThemeProvider>
+  );
 }
 
 export default function Root() {
-  const [App, setApp] = useState(null);
+  const [fonts, setFonts] = useState(false);
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      const v = await readVisual();
-      applyTheme(v.layout, v.theme);
-      try {
-        await Font.loadAsync(FONTS);
-        setFontsReady(true);
-      } catch (e) {
-        // sem as fontes, usa a do sistema
-      }
-      const Loaded = require('../App').default;
-      if (alive) setApp(() => Loaded);
-    })();
-    return () => {
-      alive = false;
-    };
+    Font.loadAsync(FONTS)
+      .then(() => setFontsOk(true))
+      .catch(() => {})
+      .finally(() => setFonts(true));
   }, []);
-  if (!App) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
-  return <App />;
+  if (!fonts) return <View style={{ flex: 1, backgroundColor: '#FFC83D' }} />;
+  return (
+    <SafeAreaProvider>
+      <StoreProvider>
+        <Themed />
+      </StoreProvider>
+    </SafeAreaProvider>
+  );
 }
