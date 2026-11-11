@@ -32,6 +32,7 @@ export default function ItemSheet({ id, draft, onSave, onClose }) {
   if (id && !stored) return null;
   const color = typeColor(c, f.type);
   const classes = state.blocks.filter((b) => b.kind === 'class' && !b.archived);
+  const accounts = state.accounts || [];
 
   const setRepeat = (freq) => {
     if (!freq) return set({ repeat: null });
@@ -46,7 +47,9 @@ export default function ItemSheet({ id, draft, onSave, onClose }) {
     const out = { type: f.type, title, date: f.date, time: f.type === 'money' ? null : f.time, endTime: f.type === 'money' || !f.time ? null : f.endTime, repeat: f.repeat, remind: f.remind, note: f.note };
     if (f.type === 'study') Object.assign(out, { studyKind: f.studyKind || 'estudo', subjectId: f.subjectId || null });
     if (f.type === 'money') {
-      Object.assign(out, { amount: parseMoney(f.amountText), flow: f.flow || 'out', category: f.category || (f.flow === 'in' ? 'Extra' : 'Outros') });
+      const transfer = f.flow === 'transfer';
+      Object.assign(out, { amount: parseMoney(f.amountText), flow: f.flow || 'out', category: transfer ? 'Transferência' : f.category || (f.flow === 'in' ? 'Extra' : 'Outros'), account: transfer ? null : f.account || null, from: transfer ? f.from || null : null, to: transfer ? f.to || null : null });
+      if (transfer) f.done = true;
       if (f.done && !out.date) out.date = todayISO();
     }
     if (stored) updateItem(stored.id, { ...out, done: f.type === 'money' ? f.done : stored.done, doneAt: f.type === 'money' ? (f.done ? stored.doneAt || Date.now() : null) : stored.doneAt });
@@ -73,18 +76,48 @@ export default function ItemSheet({ id, draft, onSave, onClose }) {
           <Row gap={10}>
             <Input value={f.amountText} onChangeText={(t) => set({ amountText: t.replace(/[^\d.,]/g, '') })} keyboardType="decimal-pad" placeholder="0,00" accessibilityLabel="Valor" aria-label="Valor" v="h" style={{ width: 130 }} />
             <View style={{ flex: 1 }}>
-              <Segmented value={f.flow || 'out'} onChange={(flow) => set({ flow, category: null })} options={[{ value: 'out', label: 'Saiu' }, { value: 'in', label: 'Entrou' }]} />
+              <Segmented value={f.flow || 'out'} onChange={(flow) => set({ flow, category: null })} options={[{ value: 'out', label: 'Saiu' }, { value: 'in', label: 'Entrou' }, ...(accounts.length > 1 || f.flow === 'transfer' ? [{ value: 'transfer', label: 'Entre contas' }] : [])]} />
             </View>
           </Row>
-          <View style={{ marginTop: 10 }}>
+          {f.flow === 'transfer' ? (
+            <>
+              {[['from', 'Saiu de'], ['to', 'Foi para']].map(([k, label]) => (
+                <View key={k}>
+                  <Label>{label}</Label>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                    <Chip label="Fora do app" on={!f[k]} onPress={() => set({ [k]: null })} />
+                    {accounts.map((a) => (
+                      <Chip key={a.id} label={a.name} on={f[k] === a.id} color={color} onPress={() => set({ [k]: a.id })} />
+                    ))}
+                  </ScrollView>
+                </View>
+              ))}
+            </>
+          ) : null}
+          <View style={{ marginTop: 10, display: f.flow === 'transfer' ? 'none' : 'flex' }}>
             <Segmented value={f.done ? 'done' : 'pending'} onChange={(v) => set({ done: v === 'done' })} options={f.flow === 'in' ? [{ value: 'done', label: 'Já recebi' }, { value: 'pending', label: 'Vou receber' }] : [{ value: 'done', label: 'Já paguei' }, { value: 'pending', label: 'Vou pagar' }]} />
           </View>
-          <Label>Categoria</Label>
-          <Row wrap>
-            {(f.flow === 'in' ? CATEGORIES_IN : CATEGORIES_OUT).map((cat) => (
-              <Chip key={cat} label={cat} on={f.category === cat} color={color} onPress={() => set({ category: cat })} />
-            ))}
-          </Row>
+          {f.flow !== 'transfer' ? (
+            <>
+              <Label>Categoria</Label>
+              <Row wrap>
+                {(f.flow === 'in' ? CATEGORIES_IN : CATEGORIES_OUT).map((cat) => (
+                  <Chip key={cat} label={cat} on={f.category === cat} color={color} onPress={() => set({ category: cat })} />
+                ))}
+              </Row>
+              {accounts.length ? (
+                <>
+                  <Label>Conta</Label>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                    <Chip label="Nenhuma" on={!f.account} onPress={() => set({ account: null })} />
+                    {accounts.map((a) => (
+                      <Chip key={a.id} label={a.name} on={f.account === a.id} color={color} onPress={() => set({ account: a.id })} />
+                    ))}
+                  </ScrollView>
+                </>
+              ) : null}
+            </>
+          ) : null}
         </>
       ) : null}
 

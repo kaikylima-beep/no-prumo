@@ -105,6 +105,10 @@ export function StoreProvider({ children }) {
       moveItem: (id, date, message) => change((s) => ({ ...s, items: s.items.map((i) => (i.id === id ? { ...i, date } : i)) }), message),
       saveBlock: (block) => change((s) => ({ ...s, blocks: s.blocks.some((b) => b.id === block.id) ? s.blocks.map((b) => (b.id === block.id ? block : b)) : [...s.blocks, block] })),
       removeBlock: (id) => change((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id), items: s.items.map((i) => (i.subjectId === id ? { ...i, subjectId: null } : i)) }), 'Apagado'),
+      // mudança livre no estado (contas, importação), com Desfazer quando tem mensagem
+      mutate: (fn, message) => change(fn, message),
+      saveAccount: (acc) => change((s) => ({ ...s, accounts: (s.accounts || []).some((a) => a.id === acc.id) ? s.accounts.map((a) => (a.id === acc.id ? acc : a)) : [...(s.accounts || []), acc] })),
+      removeAccount: (id) => change((s) => ({ ...s, accounts: s.accounts.filter((a) => a.id !== id), items: s.items.map((i) => (i.account === id || i.from === id || i.to === id ? { ...i, account: i.account === id ? null : i.account, from: i.from === id ? null : i.from, to: i.to === id ? null : i.to } : i)) }), 'Conta apagada'),
       setSettings: (patch) => change((s) => ({ ...s, settings: { ...s.settings, ...patch } })),
       replaceAll: (next, message) => change(() => sanitize(next), message),
       say,

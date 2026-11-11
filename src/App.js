@@ -1,6 +1,6 @@
 // Casca do app: 4 telas, o botão de falar no meio, as folhas e o aviso de "Desfazer".
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Image, Pressable, View } from 'react-native';
+import { BackHandler, Image, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ICONS, useTheme } from './theme';
 import { Icon, Row, T } from './ui';
@@ -17,6 +17,10 @@ import ItemSheet from './ItemSheet';
 import BlockSheet from './BlockSheet';
 import Settings from './Settings';
 import Onboarding from './Onboarding';
+import AccountSheet from './AccountSheet';
+import ImportSheet from './ImportSheet';
+import { readDocumentAsset } from './legacy/importDocument';
+import { addShareListener, getInitialShare } from '../modules/share-receiver';
 
 const TABS = [
   { key: 'today', label: 'Hoje', icon: 'today', Screen: Today },
@@ -24,12 +28,12 @@ const TABS = [
   { key: 'study', label: 'Estudos', icon: 'book', Screen: Study },
   { key: 'money', label: 'Dinheiro', icon: 'wallet', Screen: Money },
 ];
-const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings };
+const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings, account: AccountSheet, import: ImportSheet };
 
 export default function App() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, toast, hideToast } = useStore();
+  const { state, toast, hideToast, say } = useStore();
   const [tab, setTab] = useState('today');
   const [seen, setSeen] = useState({ today: true });
   const [sheets, setSheets] = useState([]);
@@ -43,6 +47,22 @@ export default function App() {
   const nav = useMemo(() => ({ open, close, go, tab }), [open, close, go, tab]);
 
   useEffect(() => onResponse((r) => handleResponse(r).catch(() => {})), []);
+  // extrato mandado de outro app pelo menu "Compartilhar": abre Dinheiro e a revisão
+  const onboarded = state.settings.onboarded;
+  useEffect(() => {
+    if (!onboarded || Platform.OS !== 'android') return undefined;
+    const handle = async (asset) => {
+      if (!asset) return;
+      go('money');
+      say('Lendo o arquivo…');
+      const r = await readDocumentAsset(asset, []);
+      if (r.error) return say(r.error);
+      open('import', { read: r });
+    };
+    handle(getInitialShare());
+    const sub = addShareListener(handle);
+    return () => sub.remove();
+  }, [onboarded]);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (tab !== 'today') {
