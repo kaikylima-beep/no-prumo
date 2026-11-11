@@ -23,10 +23,12 @@ export const DEFAULT_SETTINGS = {
   voiceOnDevice: true,
   semester: { start: null, end: null },
   testMode: false,
+  notesButton: true, // botão flutuante de apontamentos (só com o modo de teste)
+  notesButtonPos: null, // { x, y } onde a pessoa deixou o botão
   backupAt: null,
   academic: DEFAULT_ACADEMIC, // média para passar, nota máxima, duração da aula, % de faltas, "Foi na aula?"
 };
-export const EMPTY_STATE = { v: 1, items: [], blocks: [], accounts: [], heardLog: [], settings: DEFAULT_SETTINGS };
+export const EMPTY_STATE = { v: 1, items: [], blocks: [], accounts: [], heardLog: [], notes: [], settings: DEFAULT_SETTINGS };
 
 let seq = 0;
 export const newId = () => `${Date.now().toString(36)}${(seq++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;

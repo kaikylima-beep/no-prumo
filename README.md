@@ -2,7 +2,13 @@
 
 App Android pessoal: você fala e ele organiza o seu dia, os estudos e o dinheiro. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.14.0** (em teste)
+Versão atual: **1.14.1** (em teste)
+
+## Correções da 1.14.1
+
+- **Apontamentos de teste.** Com o modo de teste ligado (5 toques na versão, no fim dos Ajustes), aparece um botão laranja flutuante em todas as telas. Tocar nele tira o print da tela e abre "Anotar": bug ou melhoria, o texto e até 3 prints (o da tela e outros da galeria). O app guarda também onde você estava e a versão. O botão pode ser arrastado para outro canto e desligado em Ajustes → Modo de teste.
+- **Salvar apontamentos e frases** (Ajustes → Modo de teste): grava numa pasta (Downloads, Drive) um arquivo `prumo-testes-AAAA-MM-DD.md` com os apontamentos e as frases da voz corrigidas, mais os prints numerados. É só mandar esses arquivos no chat.
+
 
 ## Novidades da 1.14 · Prumo novo
 

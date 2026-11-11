@@ -20,6 +20,9 @@ import Onboarding from './Onboarding';
 import AccountSheet from './AccountSheet';
 import ImportSheet from './ImportSheet';
 import GradeSheet from './GradeSheet';
+import NoteSheet from './NoteSheet';
+import NoteButton from './NoteButton';
+import { takeScreenshot } from './files';
 import { readDocumentAsset } from './legacy/importDocument';
 import { addShareListener, getInitialShare } from '../modules/share-receiver';
 
@@ -29,12 +32,14 @@ const TABS = [
   { key: 'study', label: 'Estudos', icon: 'book', Screen: Study },
   { key: 'money', label: 'Dinheiro', icon: 'wallet', Screen: Money },
 ];
-const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings, account: AccountSheet, import: ImportSheet, grade: GradeSheet };
+const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings, account: AccountSheet, import: ImportSheet, grade: GradeSheet, note: NoteSheet };
+const SHEET_NAME = { capture: 'Falar', item: 'Ajustar item', block: 'Matéria', settings: 'Ajustes', account: 'Conta', import: 'Importar extrato', grade: 'Lançar nota', note: 'Anotar' };
 
 export default function App() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const { state, toast, hideToast, say } = useStore();
+  const { state, toast, hideToast, say, setSettings } = useStore();
+  const [shooting, setShooting] = useState(false);
   const [tab, setTab] = useState('today');
   const [seen, setSeen] = useState({ today: true });
   const [sheets, setSheets] = useState([]);
@@ -48,6 +53,22 @@ export default function App() {
   const nav = useMemo(() => ({ open, close, go, tab }), [open, close, go, tab]);
 
   useEffect(() => onResponse((r) => handleResponse(r).catch(() => {})), []);
+
+  // apontamento (modo de teste): esconde o botão, tira o print da tela e abre a folha Anotar
+  const sheetsRef = React.useRef(sheets);
+  sheetsRef.current = sheets;
+  const tabRef = React.useRef(tab);
+  tabRef.current = tab;
+  const anotar = useCallback(async () => {
+    if (sheetsRef.current.some((s) => s.kind === 'note')) return;
+    const where = [TABS.find((t) => t.key === tabRef.current).label, ...sheetsRef.current.map((s) => SHEET_NAME[s.kind] || s.kind)].join(' › ');
+    setShooting(true);
+    await new Promise((r) => setTimeout(r, 120));
+    const shot = await takeScreenshot();
+    setShooting(false);
+    open('note', { shot, where });
+  }, [open]);
+  const moveButton = useCallback((p) => setSettings({ notesButtonPos: p }), [setSettings]);
   // extrato mandado de outro app pelo menu "Compartilhar": abre Dinheiro e a revisão
   const onboarded = state.settings.onboarded;
   useEffect(() => {
@@ -112,6 +133,7 @@ export default function App() {
           const S = SHEETS[s.kind];
           return <S key={s.key} {...s.props} onClose={close} />;
         })}
+        {state.settings.testMode && state.settings.notesButton !== false && !sheets.some((x) => x.kind === 'note') ? <NoteButton pos={state.settings.notesButtonPos} onMove={moveButton} onPress={anotar} hidden={shooting} /> : null}
         {toast ? (
           <View pointerEvents="box-none" style={[{ position: 'absolute', left: 16, right: 16 }, sheets.length ? { top: insets.top + 10 } : { bottom: insets.bottom + 96 }]}>
             <Row key={toast.key} style={{ backgroundColor: c.text, borderRadius: 14, paddingLeft: 16, paddingRight: 6, minHeight: 50 }}>

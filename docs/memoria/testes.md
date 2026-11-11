@@ -5,13 +5,21 @@ Criado em 09/11/2026, a pedido do Kaiky: enquanto o app está em fase de testes,
 ## Como funciona
 
 1. **No celular:** o modo de teste fica ligado (5 toques em "No Prumo 1.12.x", no fim dos Ajustes). Toda frase corrigida antes de salvar fica guardada sozinha. Print da tela Editar também serve.
-2. **Enviar:** Ajustes → Modo de teste → "Mandar as frases", colando no chat. Pode ser junto com os prints.
+2. **Enviar:** Ajustes → Modo de teste → "Salvar apontamentos e frases" (desde a 1.14.1): escolhe uma pasta e o app grava `prumo-testes-AAAA-MM-DD.md` com os apontamentos e as frases, mais os prints numerados. Mandar esses arquivos no chat.
+   - **Apontamentos (1.14.1):** com o modo de teste ligado, o botão laranja flutuante anota bug ou melhoria a qualquer momento, com o print da tela junto. Na triagem, cada apontamento vira item do plano (bug = correção; melhoria = cartão no plano), igual às frases.
 3. **Triagem (Claude):** cada frase entra na tabela abaixo com um tipo:
    - **Ouvido:** o celular trocou a palavra ("pique" no lugar de "Pix"). Quem resolve é o dicionário pessoal e o vocabulário, nunca uma regra para aquela palavra.
    - **Regra:** a palavra veio certa e o app montou o item errado. Quem resolve é uma regra **geral** de português, testada em várias frases parecidas.
    - **Tela:** o app entendeu, mas mostrou de um jeito confuso.
 4. **Na próxima versão:** cada frase do tipo Regra vira teste automático no `npm test` (com nomes trocados), e a regra geral é corrigida.
 5. **Fechamento:** a frase sai da lista de abertas quando passa no celular.
+
+## Testar no celular · 1.14.1 (apontamentos)
+- [ ] Ligar o modo de teste: aparece o botão laranja flutuante.
+- [ ] Arrastar o botão para outro canto; fechar e abrir o app: ele continua lá.
+- [ ] Tocar no botão em 3 telas diferentes (inclusive com uma folha aberta): o print é da tela certa e não mostra o botão.
+- [ ] Juntar um print da galeria; tirar um print com o ✕.
+- [ ] Ajustes → Modo de teste → Salvar apontamentos e frases → Downloads: abrir o `.md` e ver os prints.
 
 ## Testar no celular · 1.14.0 (Prumo novo)
 Antes de instalar: Ajustes → Backup → Salvar (na 1.13.1). Instale por cima: os dados continuam. Deixe o **modo de teste ligado** (5 toques em "No Prumo 1.14.0", no fim dos Ajustes).

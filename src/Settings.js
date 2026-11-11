@@ -6,14 +6,15 @@ import { Btn, Card, Chip, DayPicker, Icon, Input, Label, Row, Segmented, Sheet, 
 import { useStore } from './store';
 import { useNav } from './nav';
 import { askExactAlarm, exactAlarmOk, testAlert } from './notify';
-import { pickText, saveText } from './files';
+import { pickText, saveFolder, saveText, dropImages } from './files';
+import { exportNotes, KIND_LABEL } from './core/notes';
 import { makeBackup, readBackup } from './core/migrate';
 import { speechMode } from './speech';
 import { STATES } from './legacy/holidays';
 import { academicOf } from './legacy/academic';
 import { dayLabel, WEEKDAYS_SHORT } from './core/dates';
 
-export const APP_VERSION = '1.14.0';
+export const APP_VERSION = '1.14.1';
 const JOBS = [
   { v: 'estagio', label: 'Estágio' },
   { v: 'trabalho', label: 'Trabalho' },
@@ -91,6 +92,9 @@ export default function Settings({ onClose }) {
   const fixed = state.blocks.filter((b) => b.kind === 'fixed' && !b.archived);
   const backupDays = st.backupAt ? Math.floor((now.getTime() - st.backupAt) / 864e5) : null;
   const log = state.heardLog || [];
+  const notes = state.notes || [];
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [exported, setExported] = useState('');
 
   const save = async () => {
     const d = new Date();
@@ -292,15 +296,54 @@ export default function Settings({ onClose }) {
       </Group>
 
       {st.testMode ? (
-        <Group title="Modo de teste" summary={`${log.length} ${log.length === 1 ? 'frase guardada' : 'frases guardadas'}`} startOpen>
+        <Group title="Modo de teste" summary={`${notes.length} ${notes.length === 1 ? 'apontamento' : 'apontamentos'} · ${log.length} ${log.length === 1 ? 'frase' : 'frases'}`} startOpen>
           <T v="s" c="soft">
-            Toda fala que você corrigir antes de guardar fica aqui, para mandar ao Claude.
+            Toque no botão laranja flutuante a qualquer momento para anotar um bug ou uma melhoria: o app tira o print da tela junto. Toda fala que você corrigir antes de guardar também fica aqui.
           </T>
+          <Toggle label="Mostrar o botão flutuante" value={st.notesButton !== false} onChange={(notesButton) => setSettings({ notesButton })} />
+          {notes
+            .slice()
+            .sort((a, b) => b.at - a.at)
+            .map((n) => (
+              <Pressable key={n.id} onPress={() => open('note', { id: n.id })} accessibilityRole="button" accessibilityLabel={`Abrir apontamento ${n.text}`} aria-label={`Abrir apontamento ${n.text}`} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Row gap={10}>
+                  <T v="sm" c={n.kind === 'bug' ? 'danger' : 'task'} style={{ width: 70 }}>
+                    {KIND_LABEL[n.kind]}
+                  </T>
+                  <View style={{ flex: 1 }}>
+                    <T numberOfLines={1}>{n.text || '(só print)'}</T>
+                    <T v="s" c="soft" numberOfLines={1}>
+                      {dayLabel(new Date(n.at).toISOString().slice(0, 10), now)}
+                      {n.photos && n.photos.length ? ` · ${n.photos.length} ${n.photos.length === 1 ? 'print' : 'prints'}` : ''}
+                      {n.where ? ` · ${n.where}` : ''}
+                    </T>
+                  </View>
+                </Row>
+              </Pressable>
+            ))}
           <Row wrap>
-            {log.length ? <Btn small label="Mandar as frases" onPress={shareLog} /> : null}
-            {log.length ? <Btn small kind="soft" label="Limpar" onPress={() => mutate((s) => ({ ...s, heardLog: [] }), 'Frases apagadas')} /> : null}
-            <Btn small kind="ghost" label="Sair do modo de teste" onPress={() => setSettings({ testMode: false })} />
+            {notes.length || log.length ? <Btn small label="Salvar apontamentos e frases" onPress={async () => { const ex = exportNotes(notes, log, { version: APP_VERSION, now: new Date() }); const r = await saveFolder([{ name: ex.name, text: ex.text, mime: 'text/markdown' }, ...ex.images]); setExported(r.ok ? `Salvo: ${ex.name}${ex.images.length ? ` e ${ex.images.length} ${ex.images.length === 1 ? 'print' : 'prints'}` : ''}. Mande esses arquivos no chat.` : r.error || ''); }} /> : null}
+            {log.length ? <Btn small kind="soft" label="Mandar só as frases" onPress={shareLog} /> : null}
           </Row>
+          {exported ? (
+            <T v="s" c="soft">
+              {exported}
+            </T>
+          ) : null}
+          {notes.length || log.length ? (
+            confirmClear ? (
+              <Row wrap>
+                <T v="s" c="danger">
+                  Apagar {notes.length} apontamentos (com os prints) e {log.length} frases?
+                </T>
+                <Btn small kind="danger" label="Apagar" onPress={() => { notes.forEach((n) => dropImages(n.photos || [])); mutate((s) => ({ ...s, notes: [], heardLog: [] }), 'Apontamentos e frases apagados'); setConfirmClear(false); }} />
+                <Btn small kind="ghost" label="Cancelar" onPress={() => setConfirmClear(false)} />
+              </Row>
+            ) : (
+              <Btn small kind="ghost" label="Limpar tudo (depois de mandar)" onPress={() => setConfirmClear(true)} style={{ alignSelf: 'flex-start' }} />
+            )
+          ) : null}
+          <Btn small kind="ghost" label="Sair do modo de teste" onPress={() => setSettings({ testMode: false })} style={{ alignSelf: 'flex-start' }} />
         </Group>
       ) : null}
 

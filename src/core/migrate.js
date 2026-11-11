@@ -16,6 +16,7 @@ export function sanitize(raw) {
     blocks: Array.isArray(s.blocks) ? s.blocks.filter((b) => b && b.id && typeof b.name === 'string').map((b) => ({ grades: [], absences: [], slots: [], aliases: [], ...b })) : [],
     accounts: Array.isArray(s.accounts) ? s.accounts.filter((a) => a && a.id && typeof a.name === 'string') : [],
     heardLog: Array.isArray(s.heardLog) ? s.heardLog.slice(0, 200) : [],
+    notes: Array.isArray(s.notes) ? s.notes.filter((n) => n && n.id).slice(0, 300) : [],
     settings: { ...DEFAULT_SETTINGS, ...(s.settings || {}), learned: { ...((s.settings || {}).learned || {}) }, semester: { ...DEFAULT_SETTINGS.semester, ...((s.settings || {}).semester || {}) } },
   };
 }

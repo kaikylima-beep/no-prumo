@@ -279,6 +279,21 @@ eq('Prumo: matéria ligada', pi[2].subjectId, prumo.state.blocks[0].id);
   eq('1.13.1 → 1.14: média com a regra da faculdade (7)', gradeOf(m1, old131.settings).status, 'needs');
 }
 
+
+// ── 1.14.1: apontamentos de teste ──
+{
+  const { exportNotes } = await import('../src/core/notes.js');
+  const notes = [
+    { id: 'n2', at: new Date(2026, 10, 12, 9, 5).getTime(), kind: 'melhoria', text: 'Queria ver as faltas no cartão', where: 'Estudos', version: '1.14.1', photos: [] },
+    { id: 'n1', at: new Date(2026, 10, 11, 21, 40).getTime(), kind: 'bug', text: 'Guardei e não apareceu em Hoje', where: 'Hoje › Falar', version: '1.14.1', photos: ['file:///x/print-1.jpg', 'file:///x/print-2.png'] },
+  ];
+  const ex = exportNotes(notes, [{ heard: 'fazer o pics do Rafa', text: 'fazer o pix do Rafa', alts: [], fixed: ['Pix do Rafa'], at: 1 }], { version: '1.14.1', now: new Date(2026, 10, 14, 10, 0) });
+  eq('nome do arquivo', ex.name, 'prumo-testes-2026-11-14.md');
+  eq('prints numerados na ordem dos apontamentos', ex.images.map((i) => i.name), ['apontamento-01-1.jpg', 'apontamento-01-2.png']);
+  eq('texto com bug, melhoria e frase', [/### 01\. Bug · 11\/11 21:40 · Hoje › Falar/.test(ex.text), /Print: apontamento-01-2\.png/.test(ex.text), /### 02\. Melhoria/.test(ex.text), /Corrigido para: "fazer o pix do Rafa"/.test(ex.text)], [true, true, true, true]);
+  eq('apontamentos sobrevivem ao abrir', sanitize({ notes }).notes.length, 2);
+}
+
 // ── contas, saldo e extrato (1.13) ──
 const oldData = {
   '@org2/accounts': JSON.stringify([{ id: 'c1', name: 'Banco A', kind: 'corrente', anchor: { balance: 1000, date: '2026-11-01', at: 1 } }, { id: 'c2', name: 'Poupança', kind: 'poupanca', anchor: { balance: 500, date: '2026-11-01', at: 1 } }, { id: 'c3', name: 'Sem saldo', kind: 'corrente', anchor: null }]),
