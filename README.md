@@ -2,17 +2,20 @@
 
 App Android pessoal: você fala e ele organiza o seu dia, os estudos e o dinheiro. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.13.0**
+Versão atual: **1.14.0** (em teste)
 
-## Novidades da 1.13 · Prumo novo
+## Novidades da 1.14 · Prumo novo
 
-O que deu certo no Peep (ensaio de 10/11) virou o Prumo. Instala por cima: os dados da 1.12 são convertidos sozinhos na primeira abertura e os antigos continuam guardados.
+O que deu certo no Peep (ensaio de 10/11) virou o Prumo, por cima da 1.13.1. Instala por cima: os dados são convertidos sozinhos na primeira abertura (notas, faltas, contas e saldos incluídos) e os antigos continuam guardados.
+
+- **A voz é a da 1.13.1** (fala natural, 278 frases medidas): horas e datas faladas, vários pedidos numa frase, vícios de fala, correção dita na hora, versões misturadas e pausas. Em cima dela, o que é novo: perguntas, aula com vários dias e horários, duração.
+- **Notas e faltas são as da 1.13.0**: falta conta por aula (50 min), limite pelo semestre sem feriados, "Foi na aula?" com Fui e Faltei, "Já saiu a nota?", avaliação cadastrada antes da nota, "Como o professor calcula". A regra da faculdade fica em Ajustes → Faculdade.
+- **O extrato tem as correções da 1.13.0 e 1.13.1**: Pix devolvido fora de Entrou e Saiu, "Tarifas e juros", Investimentos, nomes limpos, categoria aprendida pela loja, a mesma compra com outra data não entra de novo, aviso quando o banco não fecha.
 
 - **Hoje** é a primeira tela: aulas, horários fixos, tarefas, provas e contas na ordem do dia, com "Agora / A seguir", os próximos 7 dias, horários livres e o **calendário do mês com feriados**.
 - **Tudo:** a lista completa, do atrasado ao sem data, com filtro por tipo.
 - **Falar ou escrever na mesma tela:** o app mostra o que entendeu enquanto você fala ou digita; toque no cartão para ajustar e em Guardar para salvar.
-- **Interpretador de frases refeito**, com as frases do campo Testes (1 a 6) passando.
-- **Estudos:** próxima prova em destaque; matérias com horários, **notas** (com peso e "quanto falta") e **faltas** com limite.
+- **Estudos:** próxima prova em destaque, "Já saiu a nota?" e as matérias com faltas e média.
 - **Dinheiro** (antes Finanças): **Saldo atual** em destaque; embaixo, entrou, saiu e a pagar do mês; limite do mês e quanto dá por dia; contas; importar extrato (PDF/CSV) com revisão mais simples.
 - **Perguntas:** "o que eu tenho amanhã?", "quanto gastei com ifood este mês?", "quando é a prova de cálculo?", "qual é o meu saldo?", "quantas faltas eu tenho em física?".
 - **Avisos:** tarefa na hora; prova e entrega 7, 3 e 1 dia antes; conta na véspera e no dia; resumo de manhã; aviso antes da aula.
@@ -20,8 +23,6 @@ O que deu certo no Peep (ensaio de 10/11) virou o Prumo. Instala por cima: os da
 - **Um visual só**, claro ou escuro, trocando na hora.
 
 ### Correções que vieram junto
-- Devolução de Pix no extrato não conta mais como gasto nem como entrada.
-- Títulos importados sem data grudada, código do banco e número solto.
 - "Aulas de … às quintas das 21:20 às 23 e sexta das 18:20 às 20:20" cria a matéria com os dois horários.
 - "Tenho 10 minutos para lavar a louça e depois arrumar o quarto em 30 minutos" vira duas tarefas com duração.
 
@@ -29,10 +30,54 @@ O que deu certo no Peep (ensaio de 10/11) virou o Prumo. Instala por cima: os da
 - Visual Simples/Avançado e o reinício para trocar o tema.
 - Importância por área (alta/média/baixa): os avisos têm um padrão fixo e o "Me avisar" de cada item.
 - Abas Tarefas e Agenda: viraram Hoje (com calendário) e Tudo.
-- Em Dinheiro: Indicadores, "Seu mês", Previsto e projeção, perguntas de renda e de "dinheiro de outras contas", necessário × não necessário, salário base e meta de guardar. O limite do mês antigo (salário − meta) veio como limite simples.
-- Na revisão do extrato: editar linha por linha antes de importar e a pergunta "de qual conta vêm os Pix com seu nome" (dá para ajustar depois de importar).
+- Em Dinheiro: Indicadores, "Seu mês", Previsto e projeção, perguntas de renda e de "dinheiro de outras contas", necessário × não necessário, salário base e meta de guardar. O limite do mês antigo (salário − meta) veio como limite simples. A fatura do cartão aparece como gasto comum.
+- Na revisão do extrato: editar linha por linha antes de importar, a pergunta "de qual conta vêm os Pix com seu nome" e a escolha "Usar o saldo do extrato" (o saldo do arquivo é usado sempre). Dá para ajustar cada lançamento depois.
 - Saudação de entrada em tela cheia, prévia animada do aviso, "Títulos curtos" e a primeira abertura em 5 passos.
-- Guardar o áudio das frases no modo de teste (fica só o texto).
+- Guardar o áudio das frases no modo de teste (ficam o texto, a confiança e o tempo das palavras).
+- Avisos com dias de antecedência por importância da área (prova avisa 7, 3 e 1 dia antes e 1 hora antes; o resto, na hora).
+
+## Novidades da 1.13.1 · Voz: fala natural
+
+O app passou a entender a fala do jeito que ela sai, não só a frase arrumadinha. Nada foi feito para uma frase específica: são etapas novas, as mesmas que os assistentes de voz usam (detalhe em `docs/memoria/voz.md`).
+
+- **Horas faladas:** "três e meia da tarde", "quinze para as oito", "meio-dia e meia", "à uma da tarde", "amanhã 8 horas". Antes, "reunião às três e meia" virava um gasto de R$ 3.
+- **Datas:** "mês que vem", "dia primeiro", "fim do mês", "fim de semana", "quarta da semana que vem", "daqui a um mês", "de 20 a 27 de dezembro", "no Natal".
+- **"Reunião quinta às 3" é às 15h.** Hora de 1 a 6, sem "da manhã", em outro dia, fica à tarde. "Acordar às 5 amanhã" continua de manhã.
+- **Vícios de fala saem:** "é então eu preciso tipo lavar o carro né" vira "Lavar o carro". Também "anota aí…", "cria um lembrete pra…", "não posso esquecer de…".
+- **Correção dita na hora:** "amanhã não, sexta", "às 3, quer dizer, às 4", "50, ou melhor, 60".
+- **Vários pedidos numa fala só:** "amanhã tem reunião às 9 dentista às 14 e academia às 18" vira 3 itens, todos amanhã. "Gastei 30 no almoço 15 no uber e 8 no café" vira 3 gastos.
+- **Número não é dinheiro à toa:** "remédio 3 vezes ao dia" é lembrete de 8 em 8 horas; "ler 30 páginas" é tarefa; "recebi 2 mil" é R$ 2.000.
+- **Quem deve a quem:** "o Pedro me pagou 50" é entrada; "o Pedro me deve 50" é a receber; "devo 80 pra Marina" é a pagar.
+- **As 5 versões que o celular ouve são misturadas** palavra por palavra: a palavra certa de uma versão entra na outra. A 1ª versão só perde com prova (valor, dia, hora ou palavra que você costuma usar).
+- **A pausa conta:** quando você para entre um pedido e outro, o app põe uma vírgula ali e separa melhor. "Amanhã, lavar o carro" não perde mais o dia.
+- **Medição:** banco de 278 frases de fala natural no `npm test`. A versão anterior acertava 46%; esta acerta 99% (84% em frases que o código nunca tinha visto).
+- **Modo de teste:** "Mandar as frases" leva também a confiança do Android e o tempo de cada palavra.
+
+## Correções da 1.13.1 · Importar extrato
+
+- **Compras repetidas ao importar um extrato novo.** O banco mostra a mesma compra com datas diferentes em extratos diferentes (o dia da compra num, o dia em que lançou no outro). O app só reconhecia o que tinha a mesma data, e as compras entravam de novo. Agora ele confere as duas datas e marca como "Já está no app". Duas compras iguais em dias diferentes continuam sendo duas.
+- **O extrato do banco que não fecha.** Às vezes o saldo que o banco informa tem centavos que não aparecem em nenhum lançamento (costuma ser o rendimento do dia). A revisão da importação agora avisa, e com "Usar o saldo do extrato" marcado o saldo do app fica igual ao do banco. O app não inventa lançamento para cobrir a diferença.
+
+## Novidades da 1.13.0 · Notas e faltas
+
+- **Notas e faltas em cada matéria.** Toque numa matéria (Estudos → Matérias) para ver as faltas e as notas dela. O cartão da matéria já mostra "Faltas 3 de 14 · Média 7,2".
+- **Faltas por aula:** o app conta pelo horário da matéria e pela duração da aula (Ajustes → Ajustar perfil → Faculdade; na UTFPR, 50 minutos). Um horário de 100 minutos são 2 aulas: faltar nele são 2 faltas. O total do semestre sai dos horários, sem os feriados, e o limite (25%, dá para mudar) vira "pode faltar mais 4 aulas". Perto do limite e quando passa, o app avisa.
+- **Marcar falta:** "Faltei hoje (2 aulas)" na matéria, "Marcar falta" para outro dia, ou falando "faltei na aula de física" ou "faltei hoje" (todas as aulas do dia).
+- **"Foi na aula?"** (opcional, Ajustes → Avisos): 5 minutos depois de cada aula chega o aviso com **Fui** e **Faltei**. Faltei conta as faltas sozinho, com o app fechado.
+- **Notas:** cada avaliação (P1, trabalho, lista…) com a nota, quanto vale e o peso, se quiser. Com os pesos, o app mostra a média e quanto falta para passar. A média para passar e a nota máxima ficam em Ajustar perfil → Faculdade, porque cada faculdade tem as suas. O campo "Como o professor calcula" guarda a fórmula do caderno.
+- **Nota pela voz:** "tirei 7,5 na P1 de cálculo". Se a P1 já estava cadastrada sem nota, ela é preenchida.
+- **"Já saiu a nota?"**: depois de uma prova ou trabalho de uma matéria, a aba Itens pergunta, com "Lançar nota".
+
+## Correções da 1.13.0 · Finanças mais limpo
+
+- **Pix devolvido:** a devolução e o Pix que voltou viram "Devolvido" e saem de Entrou, Saiu, orçamento, recebimentos e gráficos. O saldo continua certo.
+- **Nomes da importação:** sem a data grudada ("…0711") e sem códigos do banco ("RSCSS"). Transporte coletivo vira Transporte.
+- **Rendimento da aplicação** vira Investimentos e não conta mais como extra.
+- **Juros e IOF** viram "Tarifas e juros", não necessários.
+- **Categoria aprendida:** uma compra numa loja que você já classificou chega com a mesma categoria.
+- **Fatura do cartão** aparece à parte no orçamento ("junta os dois tipos"), sem marca de necessário.
+- **Menos números repetidos no topo (Avançado):** saiu "Mudança no saldo" (era o "Hoje nas contas" menos o "Começou o mês", que estão logo acima); o "Previsto no fim do mês" some do destaque quando o "Ainda pode gastar" já mostra o mesmo dinheiro; sem saldo de conta, o cartão de baixo não repete a sobra do topo. Nenhuma função saiu.
+- O que já estava importado é corrigido uma vez, ao abrir o app.
 
 ## Correções da 1.12.3
 

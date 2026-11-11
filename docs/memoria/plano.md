@@ -4,7 +4,7 @@ Atualizado em 09/11/2026 (versão 1.12.3). Fonte inicial: Mapa do No Prumo + con
 Faltam os docs do Projeto do claude.ai (memória completa e plano antigo): quando chegarem, completar aqui.
 
 ## Mudança de rota (11/11/2026)
-O Kaiky aprovou o Peep no celular e pediu para levar tudo ao Prumo. A **1.13 virou o "Prumo novo"** (plano em `plano-1.13.md`) e já entrega o que estava previsto para 1.12.4 (Finanças mais limpo), 1.13 (notas e faltas), 1.14 (horários fixos), 1.15 (tela Hoje) e as perguntas pela voz. Depois que ela passar no celular, a fila continua em: revisões automáticas, backup na nuvem, troca da chave de assinatura e "antes de divulgar". As datas abaixo são as antigas e precisam ser refeitas.
+O Kaiky aprovou o Peep no celular e pediu para levar tudo ao Prumo. A versão "Prumo novo" (plano em `plano-1.13.md`) saiu como **1.14.0**, porque a 1.13.0 (notas e faltas) e a 1.13.1 (fala natural, extrato) já tinham sido feitas em outro ramo; a 1.14 junta tudo e já entrega o que estava previsto para 1.12.4 (Finanças mais limpo), 1.13 (notas e faltas), 1.14 (horários fixos), 1.15 (tela Hoje) e as perguntas pela voz. Depois que ela passar no celular, a fila continua em: revisões automáticas, backup na nuvem, troca da chave de assinatura e "antes de divulgar". As datas abaixo são as antigas e precisam ser refeitas.
 
 ## Regras de versão
 - Correção = x.y.**Z** (só conserta). Versão nova = x.**Y** (um tema). **2.0** = quebra "tudo no celular e sem internet" (ex.: bot no WhatsApp).

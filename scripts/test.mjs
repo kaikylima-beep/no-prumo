@@ -260,6 +260,25 @@ eq('Prumo: matéria ligada', pi[2].subjectId, prumo.state.blocks[0].id);
   eq('remédio 3 vezes ao dia avisa nos 3 horários', rem, ['10 22h', '11 6h', '11 14h']);
 }
 
+
+// ── dados da 1.13.1 (notas, faltas, fórmula, regras da faculdade) ──
+{
+  const old131 = fromOldStorage(Object.entries({
+    '@org2/subjects': JSON.stringify([{ id: 'm1', name: 'Cálculo 2', aliases: [], color: 1, schedules: [{ days: [1, 3], start: '10:00', end: '11:40' }], grades: [{ id: 'g1', name: 'P1', score: 7.5, max: null, weight: 40 }, { id: 'g2', name: 'P2', score: null, weight: 60 }], absences: [{ id: 'a1', date: '2026-11-04', count: 2 }], formula: '(P1 + P2) / 2' }]),
+    '@org2/study': JSON.stringify([{ id: 'e1', title: 'Prova de Cálculo 2', date: '2026-11-04', subjectId: 'm1', gradeAsked: true }]),
+    '@org2/tasks': JSON.stringify([{ id: 't9', title: 'Remédio', date: '2026-11-10', repeat: { freq: 'daily', interval: 8 }, times: ['06:00', '14:00', '22:00'] }]),
+    '@org2/finance': JSON.stringify([{ id: 'f1', type: 'out', title: 'Pix devolvido', amount: 60, category: 'Devolvido', date: '2026-11-04', status: 'paid' }, { id: 'f2', type: 'out', title: 'Padaria', amount: 12, category: 'Alimentação', date: '2026-11-04', status: 'paid', sameAs: ['2026-11-03'] }]),
+    '@org2/settings': JSON.stringify({ profile: { name: 'Teste' }, onboarded: true, academic: { passGrade: 7, classMinutes: 45, askAttendance: true } }),
+  }), now);
+  const m1 = old131.blocks[0];
+  eq('1.13.1 → 1.14: notas, faltas e fórmula', [m1.grades.map((g) => [g.name, g.score, g.weight]), m1.absences.map((a) => [a.date, a.count]), m1.formula], [[['P1', 7.5, 40], ['P2', null, 60]], [['2026-11-04', 2]], '(P1 + P2) / 2']);
+  eq('1.13.1 → 1.14: regras da faculdade', [old131.settings.academic.passGrade, old131.settings.academic.classMinutes, old131.settings.academic.askAttendance, old131.settings.academic.maxGrade], [7, 45, true, 10]);
+  eq('1.13.1 → 1.14: prova mantém o id e o "já perguntei"', old131.items.filter((i) => i.type === 'study').map((i) => [i.id, i.gradeAsked]), [['e1', true]]);
+  eq('1.13.1 → 1.14: vários horários e data dupla', [old131.items.find((i) => i.id === 't9').times, old131.items.find((i) => i.title === 'Padaria').sameAs], [['06:00', '14:00', '22:00'], ['2026-11-03']]);
+  eq('1.13.1 → 1.14: devolvido fora do mês', monthMoney(old131.items, '2026-11', {}, now).out, 12);
+  eq('1.13.1 → 1.14: média com a regra da faculdade (7)', gradeOf(m1, old131.settings).status, 'needs');
+}
+
 // ── contas, saldo e extrato (1.13) ──
 const oldData = {
   '@org2/accounts': JSON.stringify([{ id: 'c1', name: 'Banco A', kind: 'corrente', anchor: { balance: 1000, date: '2026-11-01', at: 1 } }, { id: 'c2', name: 'Poupança', kind: 'poupanca', anchor: { balance: 500, date: '2026-11-01', at: 1 } }, { id: 'c3', name: 'Sem saldo', kind: 'corrente', anchor: null }]),

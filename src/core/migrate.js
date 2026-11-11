@@ -55,6 +55,10 @@ export function fromPrumo(data, now = new Date()) {
   (get('subjects') || []).forEach((s) => {
     const b = makeBlock({ kind: 'class', name: s.name, aliases: s.aliases || [], color: (s.color || 0) % 8, room: s.room || '', slots: (s.schedules || []).filter((x) => x && x.start).map((x) => ({ days: x.days || [], start: x.start, end: x.end || x.start })) }, blocks);
     b.archived = !!s.archived;
+    // 1.13.x: notas, faltas e a fórmula do professor
+    b.grades = (s.grades || []).filter((g) => g && g.name !== undefined).map((g) => ({ id: g.id || newId(), name: g.name || 'Avaliação', score: g.score === undefined || g.score === '' ? null : g.score, max: g.max || null, weight: g.weight || null, date: g.date || null, ...(g.studyId ? { studyId: g.studyId } : null) }));
+    b.absences = (s.absences || []).map((a) => (typeof a === 'string' ? { id: newId(), date: a, count: 1 } : { id: a.id || newId(), date: a.date, count: Number(a.count) || 1 })).filter((a) => a.date);
+    b.formula = s.formula || '';
     idMap[s.id] = b.id;
     blocks.push(b);
   });
@@ -70,7 +74,10 @@ export function fromPrumo(data, now = new Date()) {
   [['tasks', 'task'], ['study', 'study']].forEach(([key, type]) => {
     (get(key) || []).forEach((o) => {
       const it = base(o, type);
+      it.id = o.id || it.id; // mesmo id: a nota lançada pelo "Já saiu a nota?" continua ligada à prova
       it.repeat = rep(o.repeat);
+      if (it.repeat && o.times && o.times.length > 1) it.times = o.times.slice();
+      if (o.gradeAsked) it.gradeAsked = true;
       if (it.repeat && !it.date) it.date = today;
       if (o.times && o.times[0] && !it.time) it.time = o.times[0];
       it.done = !!o.done && !it.repeat;
@@ -95,6 +102,7 @@ export function fromPrumo(data, now = new Date()) {
     if (it.flow === 'transfer') Object.assign(it, { category: 'Transferência', account: null, from: acc(o.from), to: acc(o.to) });
     else Object.assign(it, { category: mapCategory(o.category, it.flow), account: acc(o.account) });
     if (o.importId) it.importId = o.importId;
+    if (o.sameAs && o.sameAs.length) it.sameAs = o.sameAs.slice();
     it.done = o.status === 'paid';
     if (it.done) it.doneAt = o.createdAt || now.getTime();
     if (it.title && it.date) items.push(it);
@@ -132,6 +140,7 @@ export function fromPrumo(data, now = new Date()) {
     autoListen: old.autoListen !== false,
     voiceOnDevice: old.voiceOnDevice !== false,
     semester: { start: (old.semester && old.semester.start) || null, end: (old.semester && old.semester.end) || null },
+    academic: { ...DEFAULT_SETTINGS.academic, ...(old.academic || {}) },
     testMode: !!old.testMode,
     backupAt: (old.backup && old.backup.lastAt) || null,
     monthLimit: budget.salary ? Math.max(0, (Number(budget.salary) || 0) - (Number(budget.target) || 0)) : 0,

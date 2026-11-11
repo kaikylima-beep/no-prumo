@@ -13,7 +13,7 @@ import { STATES } from './legacy/holidays';
 import { academicOf } from './legacy/academic';
 import { dayLabel, WEEKDAYS_SHORT } from './core/dates';
 
-export const APP_VERSION = '1.13.0';
+export const APP_VERSION = '1.14.0';
 const JOBS = [
   { v: 'estagio', label: 'Estágio' },
   { v: 'trabalho', label: 'Trabalho' },
