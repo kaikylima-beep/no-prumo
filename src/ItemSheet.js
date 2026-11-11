@@ -44,7 +44,7 @@ export default function ItemSheet({ id, draft, onSave, onClose }) {
   const save = () => {
     const title = f.title.trim();
     if (!title) return;
-    const out = { type: f.type, title, date: f.date, time: f.type === 'money' ? null : f.time, endTime: f.type === 'money' || !f.time ? null : f.endTime, repeat: f.repeat, remind: f.remind, note: f.note };
+    const out = { type: f.type, title, date: f.date, time: f.type === 'money' ? null : f.time, endTime: f.type === 'money' || !f.time ? null : f.endTime, repeat: f.repeat, remind: f.remind, note: f.note, duration: f.duration || null };
     if (f.type === 'study') Object.assign(out, { studyKind: f.studyKind || 'estudo', subjectId: f.subjectId || null });
     if (f.type === 'money') {
       const transfer = f.flow === 'transfer';

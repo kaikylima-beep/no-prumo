@@ -26,7 +26,7 @@ export default function Today() {
   const isToday = day === today;
   const agenda = useMemo(() => dayAgenda(state, day, now), [state, day, now]);
   const nn = isToday ? nowAndNext(agenda, now) : { current: null, next: null };
-  const free = useMemo(() => (agenda.timed.some((e) => e.kind === 'block') ? freeSlots(agenda, isToday ? `${String(Math.max(7, now.getHours())).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` : '07:00').slice(0, 3) : []), [agenda, isToday]);
+  const free = useMemo(() => (agenda.timed.some((e) => e.kind === 'block') ? freeSlots(agenda, isToday && now.getHours() >= 7 ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` : '07:00').slice(0, 3) : []), [agenda, isToday]);
   const money = useMemo(() => monthMoney(state.items, monthKey(today), state.settings, now), [state, today]);
   const week = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = addDays(today, i);

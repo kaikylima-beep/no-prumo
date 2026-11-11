@@ -1,8 +1,38 @@
 # No Prumo
 
-App Android pessoal com três áreas (Tarefas, Finanças e Estudos), uma Agenda e um botão de microfone que organiza o que você fala. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
+App Android pessoal: você fala e ele organiza o seu dia, os estudos e o dinheiro. *Fala. Tá no prumo.* (Antes chamado Meu Organizador; o nome no celular agora é **Prumo**.)
 
-Versão atual: **1.12.3**
+Versão atual: **1.13.0**
+
+## Novidades da 1.13 · Prumo novo
+
+O que deu certo no Peep (ensaio de 10/11) virou o Prumo. Instala por cima: os dados da 1.12 são convertidos sozinhos na primeira abertura e os antigos continuam guardados.
+
+- **Hoje** é a primeira tela: aulas, horários fixos, tarefas, provas e contas na ordem do dia, com "Agora / A seguir", os próximos 7 dias, horários livres e o **calendário do mês com feriados**.
+- **Tudo:** a lista completa, do atrasado ao sem data, com filtro por tipo.
+- **Falar ou escrever na mesma tela:** o app mostra o que entendeu enquanto você fala ou digita; toque no cartão para ajustar e em Guardar para salvar.
+- **Interpretador de frases refeito**, com as frases do campo Testes (1 a 6) passando.
+- **Estudos:** próxima prova em destaque; matérias com horários, **notas** (com peso e "quanto falta") e **faltas** com limite.
+- **Dinheiro** (antes Finanças): **Saldo atual** em destaque; embaixo, entrou, saiu e a pagar do mês; limite do mês e quanto dá por dia; contas; importar extrato (PDF/CSV) com revisão mais simples.
+- **Perguntas:** "o que eu tenho amanhã?", "quanto gastei com ifood este mês?", "quando é a prova de cálculo?", "qual é o meu saldo?", "quantas faltas eu tenho em física?".
+- **Avisos:** tarefa na hora; prova e entrega 7, 3 e 1 dia antes; conta na véspera e no dia; resumo de manhã; aviso antes da aula.
+- **Ajustes** reorganizados: perfil, aparência, meus horários fixos, semestre, avisos, voz, backup.
+- **Um visual só**, claro ou escuro, trocando na hora.
+
+### Correções que vieram junto
+- Devolução de Pix no extrato não conta mais como gasto nem como entrada.
+- Títulos importados sem data grudada, código do banco e número solto.
+- "Aulas de … às quintas das 21:20 às 23 e sexta das 18:20 às 20:20" cria a matéria com os dois horários.
+- "Tenho 10 minutos para lavar a louça e depois arrumar o quarto em 30 minutos" vira duas tarefas com duração.
+
+### O que saiu
+- Visual Simples/Avançado e o reinício para trocar o tema.
+- Importância por área (alta/média/baixa): os avisos têm um padrão fixo e o "Me avisar" de cada item.
+- Abas Tarefas e Agenda: viraram Hoje (com calendário) e Tudo.
+- Em Dinheiro: Indicadores, "Seu mês", Previsto e projeção, perguntas de renda e de "dinheiro de outras contas", necessário × não necessário, salário base e meta de guardar. O limite do mês antigo (salário − meta) veio como limite simples.
+- Na revisão do extrato: editar linha por linha antes de importar e a pergunta "de qual conta vêm os Pix com seu nome" (dá para ajustar depois de importar).
+- Saudação de entrada em tela cheia, prévia animada do aviso, "Títulos curtos" e a primeira abertura em 5 passos.
+- Guardar o áudio das frases no modo de teste (fica só o texto).
 
 ## Correções da 1.12.3
 

@@ -18,6 +18,9 @@ Mesma proposta (falar e o app organiza), para o mesmo público (estudante que fa
 ## Como gerar o APK
 Workflow `Peep APK` (`.github/workflows/peep-apk.yml`): roda a cada push em `peep/` nos ramos de trabalho. Usa a mesma chave de teste do Prumo. `cd peep && npm test` roda os testes (111 em 10/11).
 
-## Estado
+## Desfecho (11/11/2026)
+O Kaiky testou no celular, aprovou e pediu para levar ao Prumo. A pasta `peep/` e o workflow `Peep APK` saíram; o código virou a base da 1.13 (`plano-1.13.md`). O texto abaixo fica como registro do ensaio.
+
+## Estado (em 10/11)
 - 0.1.0: conferido no navegador (claro e escuro) e por teste automático. **Nada foi testado no celular ainda**: voz, avisos, teclado e botão voltar precisam do teste do Kaiky.
 - Decisão pendente do Kaiky: seguir com o Peep, trazer partes dele para o Prumo, ou descartar.

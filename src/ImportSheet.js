@@ -4,7 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useTheme } from './theme';
 import { Btn, Chip, Icon, Input, Label, Row, Sheet, T } from './ui';
 import { useStore } from './store';
-import { applyImport, guessAccount, prepareImport } from './core/money';
+import { applyImport, guessAccount, mapCategory, prepareImport } from './core/money';
 import { formatMoney } from './core/dates';
 
 const KIND = { extrato: 'Extrato', fatura: 'Fatura do cartão', holerite: 'Holerite', csv: 'Planilha' };
@@ -69,7 +69,7 @@ export default function ImportSheet({ read, onClose }) {
                 {r.title}
               </T>
               <T v="s" c="soft">
-                {day(r.date)} · {r.type === 'transfer' ? 'Entre contas' : r.category}
+                {day(r.date)} · {r.type === 'transfer' ? 'Entre contas' : mapCategory(r.category, r.type)}
               </T>
               {r.hint ? (
                 <T v="s" c="warn">

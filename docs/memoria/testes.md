@@ -59,6 +59,9 @@ Instale por cima (os dados continuam). Marque o que funcionou; o que não funcio
 | 3 | 09/11 | "fazer o pics do Rafa de R$ 60" | Finanças "Pics Rafa", R$ 60, **pago** (Ouvido + Regra) | 1.12.3 (teste no celular pendente): dinheiro com verbo no infinitivo no começo (fazer, mandar, enviar, transferir, depositar, pagar) é a pagar; "fiz/mandei/enviei" é pago. Ouvido: "pics" → "pix" pelo dicionário pessoal (corrigir 2 vezes). |
 | 4 | 09/11 | "Chegando em casa eu tenho que lavar o carro lá para as 10 horas" | Tarefa "Chegando casa eu tenho" (Regra) | 1.12.3 (teste no celular pendente): contexto no gerúndio no começo sai do título e não decide a área; título curto começa no verbo de ação ("Lavar carro"). |
 
+| 5 | 11/11 | "Aulas de circuitos análise de circuitos a as quintas-feiras das 21:20 até às 23 e sexta-feira das 18:20 até às 20:20 que isso te" | Virou 1 tarefa com a frase inteira (Regra) | 1.13 (teste no celular pendente): vários dias com horários diferentes viram vários horários da mesma matéria; plural do dia ("quintas-feiras"); nome recomeçado vale a versão completa; sobra depois do último horário é descartada. |
+| 6 | 11/11 | "Eu tenho 10 minutos para lavar louça e depois disso eu tenho que arrumar o quarto em 30 minutos" | 1 tarefa, com hora errada (Regra) | 1.13 (teste no celular pendente): "tenho N minutos para" e "por N minutos" são duração; "depois disso" separa; depois de algo com duração, "em N minutos" também é duração. |
+
 ## Regras para a correção
 
 - Nenhuma correção mira uma frase só. Cada regra nova é testada também em frases parecidas que já passavam, e as anteriores continuam passando (474 na 1.12.3).

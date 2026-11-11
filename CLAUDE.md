@@ -14,7 +14,7 @@ Este arquivo é o que todo agente lê. Leia o resto só se a tarefa pedir.
 | Plano da voz | `docs/memoria/voz.md` |
 | Cores, telas, ícone | `docs/memoria/marca.md` |
 | O que mudou em cada versão | `README.md` (Novidades/Correções) |
-| Peep, a versão alternativa de teste (pasta `peep/`) | `docs/memoria/peep.md` |
+| Plano da 1.13 (Prumo novo) e o ensaio Peep | `docs/memoria/plano-1.13.md`, `docs/memoria/peep.md` |
 | Guias antigos (build manual na nuvem) | `docs/antigo/` — só para consulta, não seguir |
 
 A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude.ai lerem a mesma coisa. Nada de dado pessoal real lá.
@@ -26,15 +26,26 @@ A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude
 - Dados pessoais reais (extratos, holerites, planilha) **nunca** entram no repositório, nos testes ou nos docs. Exemplos com dados inventados.
 - "Ainda não precisa fazer a versão" = só analisar, não mexer no código.
 
+## Como o código está organizado (desde a 1.13, "Prumo novo")
+
+A 1.13 trocou a base do app pela do Peep (ensaio de 10/11). O código da 1.12 está em `docs/antigo/v1.12/`, só para consulta.
+
+| Pasta | O que tem |
+|---|---|
+| `src/core/` | Regras sem tela: `nlu.js` (interpretador), `model.js` (itens, dia, mês, notas, faltas), `money.js` (contas, saldo, extrato), `plan.js` (avisos), `answers.js` (perguntas), `learn.js` (dicionário pessoal), `migrate.js` (backup e conversão da 1.12) |
+| `src/legacy/` | Módulos da 1.12 que continuam valendo como estão: leitura de PDF/CSV, conferência de extrato, feriados |
+| `src/` | Telas e peças: `App.js`, `Capture.js`, `ItemSheet.js`, `BlockSheet.js`, `AccountSheet.js`, `ImportSheet.js`, `Settings.js`, `screens/` |
+| `scripts/test.mjs` | `npm test` |
+
 ## Regras técnicas que não podem quebrar
 
-- Todo `Text`/`TextInput` vem de `src/AppText.js`, nunca de `react-native`.
-- Cores fixas só em `src/theme.js`. Texto sobre cor da área usa `colors.onAccent`.
-- `StyleSheet.absoluteFill`, nunca `absoluteFillObject` (o `npm test` reprova).
+- Texto na tela usa `T` e `Input` de `src/ui.js`; cores só em `src/theme.js` (`useTheme`). Um visual só; claro/escuro troca sem reiniciar.
+- Folhas (`Sheet`) não são `Modal`: ficam dentro do app, e o aviso "Desfazer" aparece por cima delas.
+- Dados: um estado só em `@prumo/state`. As chaves `@org2/*` da 1.12 são lidas na primeira abertura e **nunca apagadas**.
+- Avisos: a lista inteira é refeita por `planReminders` a cada mudança; nenhum item guarda id de aviso.
 - `shouldPlaySound` sempre `true` no `setNotificationHandler` (libera a vibração).
 - Não trocar os ids dos canais `lembretes-som` e `lembretes-vibrar`.
-- Todas as abas ficam montadas (`display: 'none'`); `Modal` dentro de tela cobre o app inteiro; o Toast fica **atrás** de `Modal`.
-- Módulo novo testado precisa ser copiado para a pasta temporária em `scripts/test-parser.mjs`.
+- Arquivos de `src/core/` e `src/legacy/` importam com a extensão `.js` (os testes rodam direto no Node).
 - `android/` não vai para o git: é gerada pelo `expo prebuild`. Mudança nativa vai em `app.json` ou em `plugins/`.
 - Voz: nada de regra para uma palavra mal ouvida específica. Erro de ouvido = dicionário pessoal/vocabulário; erro de regra = regra geral de português, testada em várias frases.
 - Expo muda a cada SDK: antes de mexer numa API do Expo, confira a doc da versão 58 (`https://docs.expo.dev/versions/v58.0.0/`). Instalar pacote com `npx expo install`.
@@ -48,7 +59,7 @@ A memória mora no repositório (`docs/memoria/`), para o Claude Code e o claude
 ### Para fechar uma versão (ex.: 1.12.3)
 
 1. `app.json`: `expo.version` e `expo.android.versionCode` (+1).
-2. `src/Drawer.js`: `APP_VERSION`.
+2. `src/Settings.js`: `APP_VERSION`.
 3. `README.md`: "Versão atual" e a seção Novidades/Correções.
 4. `npm test` passando.
 5. Commit em `main` e push. Como a versão do `app.json` ainda não tem Release, o GitHub gera o APK sozinho e cria a Release `v1.12.3` com ele. (Não crie tags daqui: o envio de tags é bloqueado nesta sessão.)
@@ -73,8 +84,8 @@ Use o agente certo e peça resposta curta. Não cole logs inteiros na conversa p
 
 | Agente | Quando |
 |---|---|
-| `codigo` | Mudanças em `src/`, `App.js`, `plugins/` |
-| `voz` | `speech.js`, `parser.js`, frases do campo Testes |
+| `codigo` | Mudanças em `src/`, `plugins/` |
+| `voz` | `src/speech.js`, `src/core/nlu.js`, frases do campo Testes |
 | `design` | UI/UX: depois do código, ajusta o visual e tira prints |
 | `testes` | Rodar `npm test` e arrumar teste quebrado |
 | `build` | Disparar e acompanhar o build no GitHub |
@@ -88,7 +99,7 @@ Linha de produção (como uma empresa): `/versao <pedido>` → Desenvolvimento �
 
 ```
 npm ci            # instalar
-npm test          # 445+ testes, todos têm que passar
+npm test          # todos têm que passar
 ```
 
 Conferência no navegador (só quando a tarefa mexe em tela):
@@ -96,4 +107,4 @@ Conferência no navegador (só quando a tarefa mexe em tela):
 npm i --no-save react-native-web@~0.21.4 react-dom@19.3.0
 EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 npx expo export --platform web --output-dir /tmp/dist
 ```
-Armadilhas do web: `Alert` não funciona; a saudação de entrada cobre o topo por ~1,5 s; todas as abas montadas, então use `locator('[aria-label="..."]:visible')`; viewport 390 de largura e alto.
+Armadilhas do web: as abas ficam montadas depois de abertas, então use `locator('[aria-label="..."]:visible')`; as abas da barra têm `role="tab"`; viewport 390 de largura e alto.

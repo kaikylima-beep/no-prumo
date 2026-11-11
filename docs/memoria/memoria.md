@@ -1,5 +1,7 @@
 # No Prumo: Memória do Projeto (fonte da verdade)
 
+> **11/11/2026 · versão 1.13.0 ("Prumo novo") em teste.** A base do app foi trocada pela do Peep, com as cores do Prumo e um visual só. O que vale para a 1.13: `README.md` (Novidades da 1.13 e "O que saiu"), `docs/memoria/plano-1.13.md` (plano aprovado pelo Kaiky) e a seção "Como o código está organizado" do `CLAUDE.md`. O texto abaixo descreve a 1.12.3 e continua valendo para as regras de produto, lançamento, versões e importação; onde ele citar Simples/Avançado, importância por área, Indicadores, `src/parser.js` ou as chaves `@org2/*` como formato atual, vale a 1.13. Falta reescrever este arquivo depois que o Kaiky aprovar a 1.13 no celular.
+
 Estado em 10/11/2026, versão **1.12.3** (versionName 1.12.3, versionCode 22), em teste no celular. Vale o que está aqui. Para o que existe, a referência é o código no GitHub; para o que foi decidido, a decisão mais recente do projeto. **Frases que o app entendeu errado: `docs/memoria/testes.md` (campo Testes), ler antes de começar qualquer versão.** Calendário das versões: `docs/memoria/plano.md`.
 
 > Trazida do Projeto do claude.ai para o repositório em 10/11/2026. Daqui em diante, a fonte é este arquivo.
