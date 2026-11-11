@@ -208,7 +208,7 @@ export default function Today() {
                     {e.absent ? ' · faltei' : ''}
                   </T>
                 </Pressable>
-                {e.block.kind === 'class' && day <= today ? <Btn small kind={e.absent ? 'danger' : 'soft'} label={e.absent ? 'Faltei' : 'Faltar'} onPress={() => saveBlock(toggleAbsence(e.block, day))} /> : null}
+                {e.block.kind === 'class' && day <= today ? <Btn small kind={e.absent ? 'danger' : 'soft'} label={e.absent ? 'Faltei' : 'Faltar'} onPress={() => saveBlock(toggleAbsence(e.block, day, state.settings))} /> : null}
               </Row>
             );
           })}

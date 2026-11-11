@@ -19,6 +19,7 @@ import Settings from './Settings';
 import Onboarding from './Onboarding';
 import AccountSheet from './AccountSheet';
 import ImportSheet from './ImportSheet';
+import GradeSheet from './GradeSheet';
 import { readDocumentAsset } from './legacy/importDocument';
 import { addShareListener, getInitialShare } from '../modules/share-receiver';
 
@@ -28,7 +29,7 @@ const TABS = [
   { key: 'study', label: 'Estudos', icon: 'book', Screen: Study },
   { key: 'money', label: 'Dinheiro', icon: 'wallet', Screen: Money },
 ];
-const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings, account: AccountSheet, import: ImportSheet };
+const SHEETS = { capture: Capture, item: ItemSheet, block: BlockSheet, settings: Settings, account: AccountSheet, import: ImportSheet, grade: GradeSheet };
 
 export default function App() {
   const c = useTheme();

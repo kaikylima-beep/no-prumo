@@ -2,7 +2,7 @@
 // Funcionam com o app fechado: leem e gravam direto no armazenamento, sem o React.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { complete } from './core/model';
+import { addAbsence, complete } from './core/model';
 import { sanitize } from './core/migrate';
 import { addDays, hhmm, todayISO } from './core/dates';
 import { syncReminders } from './notify';
@@ -19,7 +19,7 @@ export const onExternalChange = (fn) => {
 export async function handleResponse(response) {
   const action = response && response.actionIdentifier;
   const req = response && response.notification && response.notification.request;
-  if (!req || !['feito', 'depois', 'amanha'].includes(action)) return false;
+  if (!req || !['feito', 'depois', 'amanha', 'fui', 'faltei'].includes(action)) return false;
   const key = `${req.identifier}|${action}`;
   if (seen.has(key)) return false;
   seen.add(key);
@@ -31,10 +31,20 @@ export async function handleResponse(response) {
       data = null;
     }
   }
-  if (!data || !data.id) return false;
+  if (!data || (!data.id && !data.block)) return false;
+  if (action === 'fui') return true;
   const raw = await AsyncStorage.getItem(STATE_KEY);
   if (!raw) return false;
   const state = sanitize(JSON.parse(raw));
+  // "Foi na aula?" → Faltei: conta as aulas daquele horário
+  if (action === 'faltei') {
+    const b = state.blocks.find((x) => x.id === data.block);
+    if (!b || (b.absences || []).some((a) => a.date === data.date)) return false;
+    state.blocks = state.blocks.map((x) => (x.id === b.id ? addAbsence(b, data.date, data.count || 1) : x));
+    await AsyncStorage.setItem(STATE_KEY, JSON.stringify(state));
+    listeners.forEach((fn) => fn());
+    return true;
+  }
   const item = state.items.find((i) => i.id === data.id);
   if (!item || item.done) return false;
   const now = new Date();

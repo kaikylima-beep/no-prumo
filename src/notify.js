@@ -30,6 +30,10 @@ async function setup() {
       { identifier: 'feito', buttonTitle: 'Feito', options: bg },
       { identifier: 'depois', buttonTitle: 'Daqui a 1 hora', options: bg },
     ]);
+    await N.setNotificationCategoryAsync('aula', [
+      { identifier: 'fui', buttonTitle: 'Fui', options: bg },
+      { identifier: 'faltei', buttonTitle: 'Faltei', options: bg },
+    ]);
     await N.setNotificationCategoryAsync('pago', [
       { identifier: 'feito', buttonTitle: 'Já resolvi', options: bg },
       { identifier: 'amanha', buttonTitle: 'Lembrar amanhã', options: bg },

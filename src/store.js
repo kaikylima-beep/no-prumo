@@ -89,7 +89,7 @@ export function StoreProvider({ children }) {
         return list;
       },
       applyActions: (actions) => {
-        const r = applyActions(ref.current.blocks, actions, new Date());
+        const r = applyActions(ref.current.blocks, actions, new Date(), ref.current.settings);
         change((s) => ({ ...s, blocks: r.blocks }));
         return r.notes;
       },

@@ -6,7 +6,9 @@ import { Btn, Card, Chip, Icon, IconBtn, Input, Row, Sheet, T } from './ui';
 import { useStore } from './store';
 import { useNav } from './nav';
 import { useSpeech } from './speech';
-import { parse } from './core/nlu';
+import { understand } from './core/understand';
+import { buildVocab, pickBest } from './legacy/voice';
+import { addDays, dayLabel, todayISO } from './core/dates';
 import { answer } from './core/answers';
 import { applyLearned, learn } from './core/learn';
 import { moneyText, repeatText, whenText } from './core/model';
@@ -15,10 +17,12 @@ import { WEEKDAYS_SHORT } from './core/dates';
 const EXAMPLES = ['prova de cálculo sexta às 8h', 'gastei 32 reais no ifood', 'lavar roupa amanhã de manhã e pagar a internet de 100 reais dia 12', 'aula de física terça e quinta das 10 às 12', 'o que eu tenho amanhã?'];
 const NEXT_TYPE = { task: 'study', study: 'money', money: 'task' };
 
-function actionText(a) {
-  if (a.type === 'grade') return { icon: 'book', title: `Nota: ${a.name} ${String(a.score).replace('.', ',')}${a.max !== 10 ? ` de ${a.max}` : ''}`, sub: a.subjectName || 'Matéria não reconhecida' };
-  if (a.type === 'absence') return { icon: 'book', title: 'Falta', sub: a.subjectName || 'Todas as aulas do dia' };
-  return { icon: 'clock', title: `${a.name}: ${a.start}–${a.end}`, sub: `${a.block === 'class' ? 'Aula' : 'Horário fixo'} · ${a.days.map((d) => WEEKDAYS_SHORT[d]).join(', ')}` };
+function actionText(a, blocks = []) {
+  const subj = a.subjectId ? (blocks.find((b) => b.id === a.subjectId) || {}).name : null;
+  if (a.type === 'grade') return { icon: 'book', title: `Nota: ${a.name} ${String(a.score).replace('.', ',')}${a.max ? ` de ${String(a.max).replace('.', ',')}` : ''}`, sub: subj || 'Escolha a matéria', pick: !subj };
+  if (a.type === 'absence') return { icon: 'book', title: `Falta${a.count > 1 ? ` (${a.count} aulas)` : ''}`, sub: subj || 'Escolha a matéria', pick: !subj };
+  const slots = a.slots || [{ days: a.days, start: a.start, end: a.end }];
+  return { icon: 'clock', title: a.name, sub: `${a.block === 'class' ? 'Aula' : 'Horário fixo'} · ${slots.map((s) => `${s.days.map((d) => WEEKDAYS_SHORT[d]).join(', ')} ${s.start}–${s.end}`).join(' · ')}` };
 }
 
 export default function Capture({ voice, onClose, initial }) {
@@ -34,21 +38,23 @@ export default function Capture({ voice, onClose, initial }) {
   const [dropped, setDropped] = useState({});
   const inputRef = useRef(null);
   const pulse = useRef(new Animated.Value(0)).current;
-  const vocab = () => [...state.blocks.map((b) => b.name), ...(state.accounts || []).map((a) => a.name), ...Object.values(state.settings.learned || {}).map((v) => v.to), 'Pix', 'prova', 'boleto', 'aula', 'estágio'].slice(0, 100);
+  // vocabulário: palavras do app, matérias, contas, trocas aprendidas e títulos que a pessoa usa
+  const vocabRef = useRef(null);
+  if (!vocabRef.current) vocabRef.current = buildVocab({ subjects: state.blocks.map((b) => ({ name: b.name, aliases: b.aliases || [], archived: b.archived })), accounts: state.accounts || [], learned: state.settings.learned || {}, titles: state.items.slice(-300).map((i) => i.title) });
+  const vocab = () => vocabRef.current;
+  const [heardInfo, setHeardInfo] = useState(null); // confiança e tempo das palavras (modo de teste)
 
-  const takeHeard = (list) => {
-    // das versões que o celular ouviu, fica a que rende mais (dia, hora, valor); empate = a primeira
-    const score = (txt) => {
-      const r = parse(applyLearned(txt, strong(state.settings.learned)).text, { now, subjects: state.blocks });
-      return r.items.reduce((n, i) => n + (i.date ? 2 : 0) + (i.time ? 2 : 0) + (i.amount ? 2 : 0) + (i.title.split(' ').length <= 6 ? 1 : 0), 0) + r.actions.length * 5 + (r.query ? 4 : 0);
-    };
-    const ranked = list.filter(Boolean).map((txt, k) => ({ txt, s: score(txt) - k * 0.01 }));
-    const best = ranked.reduce((a, b) => (b.s > a.s + 1.5 ? b : a), ranked[0] || { txt: '' });
-    const first = best.txt;
-    list = [first, ...list.filter((x) => x !== first)];
-    const fixed = applyLearned(first, strong(state.settings.learned));
+  const takeHeard = (list, audio, info = {}) => {
+    // 1.13.1: a 1ª versão do Android só perde com prova (valor, dia, hora, palavra da pessoa);
+    // depois, as versões são misturadas palavra por palavra
+    const learned = strong(state.settings.learned);
+    const versions = list.filter(Boolean).map((t) => applyLearned(t, learned).text);
+    const best = pickBest(versions, todayISO(now), now, vocabRef.current || [], info.conf || []);
+    const first = list[best.index] || list[0] || '';
+    const fixed = applyLearned(best.text || first, learned);
+    setHeardInfo({ conf: info.conf || [], timing: info.timing || [] });
     setHeard(first);
-    setAlts(list.slice(1, 3).filter((a) => a && a !== first));
+    setAlts(list.filter((a) => a && a !== first).slice(0, 2));
     setAuto(fixed.changed);
     setText(fixed.text);
     setLive('');
@@ -63,11 +69,13 @@ export default function Capture({ voice, onClose, initial }) {
     return () => speech.abort();
   }, []);
 
-  const result = useMemo(() => parse(text, { now, subjects: state.blocks }), [text, state.blocks]);
+  const result = useMemo(() => understand(text, { now, blocks: state.blocks, settings: state.settings }), [text, state.blocks]);
   const items = result.items.map((it, i) => ({ ...it, ...(edits[i] || {}) })).map((it, i) => ({ it, i })).filter((x) => !dropped[x.i]);
-  const actions = result.actions.map((a, i) => ({ a, i })).filter((x) => !dropped[`a${x.i}`]);
+  const actions = result.actions.map((a, i) => ({ a: { ...a, ...(edits[`a${i}`] || {}) }, i })).filter((x) => !dropped[`a${x.i}`]);
+  const classes = state.blocks.filter((b) => b.kind === 'class' && !b.archived);
+  const placeName = { estagio: 'Estágio', trabalho: 'Trabalho', outros: state.settings.occupationName || 'Outro' }[state.settings.occupation];
   const reply = result.query ? answer(result.query, state, now) : null;
-  const total = items.length + actions.length;
+  const total = items.length + actions.filter((x) => x.a.type === 'schedule' || x.a.subjectId).length;
   // sugestão do dicionário: a pessoa corrigiu uma vez; na segunda, troca sozinho
   const hint = useMemo(() => {
     const weak = Object.entries(state.settings.learned || {}).filter(([, v]) => v.n === 1);
@@ -87,10 +95,10 @@ export default function Capture({ voice, onClose, initial }) {
     // modo de teste: guarda toda fala que precisou de correção (texto, cartão ajustado ou tirado)
     const touched = heard && (heard !== text || Object.keys(edits).length || Object.keys(dropped).length);
     if (state.settings.testMode && touched) {
-      const entry = { id: `h${Date.now()}`, heard, alts, text, fixed: [...items.map((x) => x.it.title), ...actions.map((x) => actionText(x.a).title)], at: Date.now() };
+      const entry = { id: `h${Date.now()}`, heard, alts, text, ...(heardInfo || {}), fixed: [...items.map((x) => x.it.title), ...actions.map((x) => actionText(x.a, state.blocks).title)], at: Date.now() };
       mutate((s) => ({ ...s, heardLog: [entry, ...(s.heardLog || [])].slice(0, 200) }));
     }
-    const notes = actions.length ? applyActions(actions.map((x) => x.a)) : [];
+    const notes = actions.length ? applyActions(actions.map((x) => x.a).filter((a) => a.type === 'schedule' || a.subjectId)) : [];
     if (items.length) addItems(items.map((x) => x.it), heard || undefined);
     onClose();
     const n = items.length;
@@ -183,7 +191,7 @@ export default function Capture({ voice, onClose, initial }) {
           </T>
           {items.map(({ it, i }) => {
             const color = typeColor(c, it.type);
-            const meta = [whenText(it, now), it.duration ? `${it.duration} min` : '', repeatText(it.repeat)].filter(Boolean).join(' · ');
+            const meta = [it.times ? `${dayLabel(it.date, now)} · ${it.times.join(', ')}` : whenText(it, now), it.duration ? `${it.duration} min` : '', repeatText(it.repeat)].filter(Boolean).join(' · ');
             return (
               <Card key={`i${i}`} style={{ padding: 12, borderLeftWidth: 4, borderLeftColor: color }}>
                 <Row gap={10}>
@@ -207,11 +215,29 @@ export default function Capture({ voice, onClose, initial }) {
                   ) : null}
                   <IconBtn name="close" size={18} label={`Tirar ${it.title}`} onPress={() => setDropped({ ...dropped, [i]: true })} />
                 </Row>
+                {it.askDay ? (
+                  <Row wrap gap={6} style={{ marginTop: 8 }}>
+                    <T v="s" c="warn">
+                      {it.time} já passou. Quando?
+                    </T>
+                    <Chip label="Hoje" onPress={() => setEdits({ ...edits, [i]: { ...(edits[i] || {}), askDay: false } })} />
+                    <Chip label="Amanhã" onPress={() => setEdits({ ...edits, [i]: { ...(edits[i] || {}), askDay: false, date: addDays(todayISO(now), 1) } })} />
+                  </Row>
+                ) : null}
+                {it.askPlace && placeName ? (
+                  <Row wrap gap={6} style={{ marginTop: 8 }}>
+                    <T v="s" c="warn">
+                      Faculdade ou {placeName.toLowerCase()}?
+                    </T>
+                    <Chip label="Faculdade" onPress={() => setEdits({ ...edits, [i]: { ...(edits[i] || {}), askPlace: false, type: 'study' } })} />
+                    <Chip label={placeName} onPress={() => setEdits({ ...edits, [i]: { ...(edits[i] || {}), askPlace: false, type: 'task' } })} />
+                  </Row>
+                ) : null}
               </Card>
             );
           })}
           {actions.map(({ a, i }) => {
-            const tx = actionText(a);
+            const tx = actionText(a, state.blocks);
             return (
               <Card key={`a${i}`} style={{ padding: 12, borderLeftWidth: 4, borderLeftColor: c.study }}>
                 <Row gap={10}>
@@ -220,9 +246,16 @@ export default function Capture({ voice, onClose, initial }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <T v="m">{tx.title}</T>
-                    <T v="s" c="soft">
+                    <T v="s" c={tx.pick ? 'warn' : 'soft'}>
                       {tx.sub}
                     </T>
+                    {tx.pick && classes.length ? (
+                      <Row wrap gap={6} style={{ marginTop: 6 }}>
+                        {classes.map((b) => (
+                          <Chip key={b.id} label={b.name} onPress={() => setEdits({ ...edits, [`a${i}`]: { subjectId: b.id } })} />
+                        ))}
+                      </Row>
+                    ) : null}
                   </View>
                   <IconBtn name="close" size={18} label="Tirar" onPress={() => setDropped({ ...dropped, [`a${i}`]: true })} />
                 </Row>

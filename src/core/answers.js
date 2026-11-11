@@ -1,12 +1,12 @@
 // Respostas para perguntas feitas ao Peep ("o que eu tenho amanhã?", "quanto gastei com ifood?").
 // Tudo calculado no celular, a partir do que a pessoa guardou.
 import { addDays, dayLabel, formatMoney, longDay, monthKey, relLabel, todayISO } from './dates.js';
-import { absenceInfo, dayAgenda, gradeInfo, monthMoney } from './model.js';
+import { absencesOf, dayAgenda, gradeOf, monthMoney } from './model.js';
+import { absenceLine, absenceStatusText, fmtGrade, gradeStatusText } from '../legacy/academic.js';
 import { norm } from './nlu.js';
 import { balances } from './money.js';
 
 const inRange = (iso, range) => !!iso && (range.month ? monthKey(iso) === range.month : iso >= range.from && iso <= range.to);
-const num = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 
 export function answer(q, state, now = new Date()) {
   const today = todayISO(now);
@@ -105,8 +105,8 @@ export function answer(q, state, now = new Date()) {
     const list = subj ? [subj] : state.blocks.filter((b) => b.kind === 'class' && !b.archived);
     if (!list.length) return { title: 'Você ainda não cadastrou matérias.', lines: [], ids: [] };
     const rows = list.map((b) => {
-      const a = absenceInfo(b);
-      return `${b.name}: ${a.count} ${a.count === 1 ? 'falta' : 'faltas'}${a.max !== null ? (a.left >= 0 ? ` · pode faltar mais ${a.left}` : ' · passou do limite') : ''}`;
+      const a = absencesOf(b, state.settings);
+      return `${b.name}: ${a.count} ${a.count === 1 ? 'falta' : 'faltas'}${a.left !== null ? ` · ${absenceStatusText(a).toLowerCase()}` : ''}`;
     });
     return subj ? { title: rows[0] + '.', lines: [], ids: [] } : { title: 'Suas faltas', lines: [{ head: null, rows }], ids: [] };
   }
@@ -115,10 +115,12 @@ export function answer(q, state, now = new Date()) {
     const list = subj ? [subj] : state.blocks.filter((b) => b.kind === 'class' && !b.archived);
     if (!list.length) return { title: 'Você ainda não cadastrou matérias.', lines: [], ids: [] };
     const rows = list.map((b) => {
-      const g = gradeInfo(b);
-      if (g.average === null) return `${b.name}: sem notas ainda`;
-      if (g.need !== undefined) return `${b.name}: ${num(g.partial)} pontos até agora · precisa de ${num(g.need)} no que falta`;
-      return `${b.name}: média ${num(g.average)}`;
+      const g = gradeOf(b, state.settings);
+      const marks = (b.grades || []).filter((x) => x.score !== null && x.score !== undefined);
+      if (!marks.length) return `${b.name}: sem notas ainda`;
+      if (g.average === null) return `${b.name}: ${marks.map((x) => `${x.name} ${fmtGrade(x.score)}`).join(', ')}`;
+      const st = gradeStatusText(g, { ...(state.settings.academic || {}) });
+      return `${b.name}: média ${fmtGrade(g.average)}${st ? ` · ${st.toLowerCase()}` : ''}`;
     });
     return subj ? { title: rows[0] + '.', lines: [], ids: [] } : { title: 'Suas médias', lines: [{ head: null, rows }], ids: [] };
   }

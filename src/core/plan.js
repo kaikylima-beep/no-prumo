@@ -2,7 +2,9 @@
 // A lista inteira é refeita a cada mudança: não existe "id de aviso" guardado em cada item,
 // então não tem como um aviso ficar órfão ou um item ficar sem aviso.
 import { addDays, at, diffDays, formatMoney, hhmm, minutesOf, todayISO } from './dates.js';
-import { blocksOn, dayAgenda, nextDate } from './model.js';
+import { blocksOn, dayAgenda, lessonsOnDay, nextDate } from './model.js';
+import { academicOf } from '../legacy/academic.js';
+import { holidaysOfMonth } from '../legacy/holidays.js';
 
 const MAX = 56; // o Android aguenta bem mais; 56 cobre semanas e deixa folga
 
@@ -63,6 +65,11 @@ export function planReminders(state, now = new Date()) {
         if (idx === 0) push(at(addDays(date, -1), '18:00'), 'Vence amanhã', `${it.title}${value}`, data, 'pago');
         return push(at(date, '09:00'), 'Vence hoje', `${it.title}${value}`, data, 'pago');
       }
+      // vários horários no dia ("remédio 3 vezes ao dia")
+      if (it.times && it.times.length > 1) {
+        it.times.forEach((t) => push(at(date, t), it.title, `${t}`, { ...data, time: t }, 'feito'));
+        return;
+      }
       const base = at(date, it.time || (it.type === 'study' ? '07:30' : '09:00'));
       const big = it.type === 'study' && (it.studyKind === 'prova' || it.studyKind === 'entrega');
       if (it.remind) {
@@ -87,6 +94,17 @@ export function planReminders(state, now = new Date()) {
       blocksOn(state.blocks, date).forEach((e) => {
         const w = new Date(at(date, e.start).getTime() - s.classAlert * 60000);
         push(w, e.block.name, `Começa às ${e.start}${e.block.room ? ` · ${e.block.room}` : ''}`, { block: e.block.id }, null);
+      });
+    }
+    // "Foi na aula?" 5 minutos depois do fim (opcional, Ajustes → Faculdade), com Fui / Faltei
+    const acad = academicOf(s);
+    const sem = s.semester || {};
+    const holiday = (holidaysOfMonth(date.slice(0, 7), s.state || undefined)[date] || []).some((h) => h.type !== 'facultativo');
+    if (acad.askAttendance && !holiday && (!sem.start || date >= sem.start) && (!sem.end || date <= sem.end)) {
+      blocksOn(state.blocks, date).forEach((e) => {
+        if (e.block.kind !== 'class' || e.absent) return;
+        const w = new Date(at(date, e.end).getTime() + 5 * 60000);
+        push(w, `Foi na aula de ${e.block.name}?`, `${e.start}–${e.end}`, { block: e.block.id, date, count: lessonsOnDay(e.block, date, s) }, 'aula');
       });
     }
     // resumo da manhã (só nos dias que têm alguma coisa)

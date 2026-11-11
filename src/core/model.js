@@ -1,4 +1,5 @@
 // Regras do Peep, sem tela: itens, rotina fixa, o dia, o mês, notas e faltas.
+import { DEFAULT_ACADEMIC, absenceStatusText, absenceSummary, academicOf, gradeSummary, lessonsOn } from '../legacy/academic.js';
 import { addDays, addMonths, at, daysInMonth, diffDays, fromISO, hhmm, minutesOf, monthKey, toISO, todayISO, weekdayOf, formatMoney, dayLabel } from './dates.js';
 
 export const DEFAULT_SETTINGS = {
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS = {
   semester: { start: null, end: null },
   testMode: false,
   backupAt: null,
+  academic: DEFAULT_ACADEMIC, // média para passar, nota máxima, duração da aula, % de faltas, "Foi na aula?"
 };
 export const EMPTY_STATE = { v: 1, items: [], blocks: [], accounts: [], heardLog: [], settings: DEFAULT_SETTINGS };
 
@@ -45,6 +47,7 @@ export function makeItem(p, now = new Date()) {
     remind: p.remind ?? null,
     note: p.note || '',
     duration: p.duration || null,
+    times: p.times && p.times.length > 1 ? p.times.slice() : null,
     done: false,
     doneAt: null,
     createdAt: now.getTime(),
@@ -167,7 +170,7 @@ export function makeBlock(p, existing = []) {
   const used = existing.map((b) => b.color);
   let color = 0;
   for (let c = 0; c < BLOCK_COLORS; c++) if (!used.includes(c)) { color = c; break; }
-  return { id: newId(), kind: p.kind === 'fixed' ? 'fixed' : 'class', name: (p.name || '').trim(), aliases: p.aliases || [], color: p.color ?? color, room: p.room || '', slots: p.slots || [], grades: [], absences: [], maxAbsences: p.maxAbsences ?? null, passGrade: 6, archived: false, createdAt: Date.now() };
+  return { id: newId(), kind: p.kind === 'fixed' ? 'fixed' : 'class', name: (p.name || '').trim(), aliases: p.aliases || [], color: p.color ?? color, room: p.room || '', slots: p.slots || [], grades: [], absences: [], formula: '', archived: false, createdAt: Date.now() };
 }
 
 export function blocksOn(blocks, iso) {
@@ -176,7 +179,7 @@ export function blocksOn(blocks, iso) {
   blocks.forEach((b) => {
     if (b.archived) return;
     (b.slots || []).forEach((s) => {
-      if ((s.days || []).includes(wd)) out.push({ kind: 'block', id: `${b.id}@${s.start}`, block: b, start: s.start, end: s.end, absent: (b.absences || []).includes(iso) });
+      if ((s.days || []).includes(wd)) out.push({ kind: 'block', id: `${b.id}@${s.start}`, block: b, start: s.start, end: s.end, absent: (b.absences || []).some((a) => a.date === iso) });
     });
   });
   return out.sort((a, b) => a.start.localeCompare(b.start));
@@ -278,50 +281,27 @@ export function monthMoney(items, key, settings = DEFAULT_SETTINGS, now = new Da
 
 // ───────── notas e faltas ─────────
 
-// Média de 0 a 10. Com peso em alguma nota, usa os pesos; sem peso, média simples.
-export function gradeInfo(block) {
-  const gs = (block.grades || []).filter((g) => g.score !== null && g.score !== undefined);
-  if (!gs.length) return { average: null, count: 0, pass: block.passGrade || 6 };
-  const weighted = gs.some((g) => g.weight);
-  let sum = 0;
-  let wsum = 0;
-  gs.forEach((g) => {
-    const w = weighted ? Number(g.weight) || 0 : 1;
-    sum += ((g.score / (g.max || 10)) * 10) * w;
-    wsum += w;
-  });
-  const average = wsum ? sum / wsum : null;
-  const pass = block.passGrade || 6;
-  const info = { average, count: gs.length, pass, weighted };
-  // pesos em porcentagem que ainda não fecham 100: quanto precisa tirar no que falta
-  if (weighted && wsum > 0 && wsum < 100 && gs.every((g) => (Number(g.weight) || 0) <= 100)) {
-    const need = (pass * 100 - sum) / (100 - wsum);
-    info.need = Math.max(0, need);
-    info.partial = sum / 100;
-    info.remaining = 100 - wsum;
-  }
-  return info;
-}
+// Notas e faltas: as regras são as da 1.13.0 (src/legacy/academic.js). Uma matéria aqui tem
+// slots (horários), grades [{ id, name, score, max, weight, date }] e absences [{ id, date, count }].
+export const asSubject = (b) => ({ ...b, schedules: b.slots || [] });
+export const gradeOf = (block, settings) => gradeSummary(block, academicOf(settings));
+export const absencesOf = (block, settings = {}) => absenceSummary(asSubject(block), academicOf(settings), settings.semester || null, settings.state || null);
+export const lessonsOnDay = (block, iso, settings) => lessonsOn(asSubject(block), iso, academicOf(settings).classMinutes) || 1;
 
-// aulas no semestre: conta os horários da matéria entre duas datas
-export function classCount(block, from, to) {
-  if (!from || !to || to < from) return 0;
-  let n = 0;
-  const perDay = [0, 0, 0, 0, 0, 0, 0];
-  (block.slots || []).forEach((s) => (s.days || []).forEach((d) => (perDay[d] += 1)));
-  for (let d = from; d <= to; d = addDays(d, 1)) n += perDay[weekdayOf(d)];
-  return n;
+// falta num dia: marca (com o número de aulas do dia) ou desmarca
+export function toggleAbsence(block, iso, settings) {
+  const has = (block.absences || []).some((a) => a.date === iso);
+  return { ...block, absences: has ? block.absences.filter((a) => a.date !== iso) : [...(block.absences || []), { id: newId(), date: iso, count: lessonsOnDay(block, iso, settings) }] };
 }
-
-export function absenceInfo(block) {
-  const count = (block.absences || []).length;
-  const max = block.maxAbsences || null;
-  return { count, max, left: max !== null ? max - count : null, danger: max !== null && max - count <= 1, over: max !== null && count > max };
+export function addAbsence(block, iso, count) {
+  return { ...block, absences: [...(block.absences || []), { id: newId(), date: iso, count: Math.max(1, Number(count) || 1) }] };
 }
-
-export function toggleAbsence(block, iso) {
-  const has = (block.absences || []).includes(iso);
-  return { ...block, absences: has ? block.absences.filter((d) => d !== iso) : [...(block.absences || []), iso].sort() };
+// nota nova; se a matéria já tem a avaliação com esse nome e sem nota (ex.: "P2", com peso), preenche ela
+export function addGrade(block, g) {
+  const before = block.grades || [];
+  const same = before.find((x) => (x.score === null || x.score === undefined) && String(x.name || '').trim().toLowerCase() === String(g.name || '').trim().toLowerCase());
+  const grade = same ? { ...same, ...g, id: same.id, weight: g.weight || same.weight || null } : { id: newId(), max: null, weight: null, ...g };
+  return { ...block, grades: same ? before.map((y) => (y.id === same.id ? grade : y)) : [...before, grade] };
 }
 
 export function nextClass(block, now = new Date()) {
@@ -339,16 +319,16 @@ export function nextClass(block, now = new Date()) {
 // ───────── aplicar o que o interpretador entendeu ─────────
 
 // ações (nota, falta, horário) viram mudanças nas matérias. Devolve { blocks, notes: [texto] }.
-export function applyActions(blocks, actions, now = new Date()) {
+export function applyActions(blocks, actions, now = new Date(), settings = {}) {
   let out = blocks.slice();
   const notes = [];
-  const find = (a) => out.find((b) => b.id === a.subjectId) || (a.subjectName && out.find((b) => b.name.toLowerCase() === a.subjectName.toLowerCase())) || (a.name && a.type === 'schedule' && out.find((b) => b.name.toLowerCase() === a.name.toLowerCase()));
+  const byId = (id) => out.find((b) => b.id === id);
   const upsert = (b) => {
     out = out.some((x) => x.id === b.id) ? out.map((x) => (x.id === b.id ? b : x)) : [...out, b];
   };
   actions.forEach((a) => {
     if (a.type === 'schedule') {
-      const b = find(a) || makeBlock({ kind: a.block, name: a.name }, out);
+      const b = byId(a.subjectId) || out.find((x) => !x.archived && x.name.toLowerCase() === String(a.name || '').toLowerCase()) || makeBlock({ kind: a.block, name: a.name }, out);
       let slots = b.slots || [];
       (a.slots || [{ days: a.days, start: a.start, end: a.end }]).forEach((slot) => {
         if (!slots.some((s) => s.start === slot.start && s.end === slot.end && s.days.join() === slot.days.join())) slots = [...slots, { days: slot.days, start: slot.start, end: slot.end }];
@@ -356,18 +336,17 @@ export function applyActions(blocks, actions, now = new Date()) {
       upsert({ ...b, slots });
       notes.push(`${b.name}: horário guardado`);
     } else if (a.type === 'grade') {
-      const b = find(a) || (a.subjectName ? makeBlock({ kind: 'class', name: a.subjectName }, out) : null);
-      if (!b) return notes.push('Não achei a matéria da nota. Abra a matéria e anote por lá.');
-      upsert({ ...b, grades: [...(b.grades || []), { id: newId(), name: a.name, score: a.score, max: a.max || 10, weight: null, date: todayISO(now) }] });
+      const b = byId(a.subjectId);
+      if (!b) return notes.push('Escolha a matéria da nota.');
+      upsert(addGrade(b, { name: a.name || 'Avaliação', score: a.score, max: a.max || null, date: a.date || todayISO(now), ...(a.studyId ? { studyId: a.studyId } : null) }));
       notes.push(`${b.name}: ${a.name} ${String(a.score).replace('.', ',')}`);
     } else if (a.type === 'absence') {
-      const targets = a.subjectId || a.subjectName ? [find(a)].filter(Boolean) : blocksOn(out, a.date).filter((e) => e.block.kind === 'class').map((e) => e.block);
-      if (!targets.length) return notes.push(a.subjectName ? `Não achei a matéria "${a.subjectName}".` : 'Você não tem aula cadastrada nesse dia.');
-      [...new Map(targets.map((b) => [b.id, b])).values()].forEach((b) => {
-        if (!(b.absences || []).includes(a.date)) upsert({ ...b, absences: [...(b.absences || []), a.date].sort() });
-        const info = absenceInfo({ ...b, absences: [...new Set([...(b.absences || []), a.date])] });
-        notes.push(`${b.name}: falta anotada${info.left !== null ? (info.left >= 0 ? ` · pode faltar mais ${info.left}` : ' · passou do limite') : ''}`);
-      });
+      const b = byId(a.subjectId);
+      if (!b) return notes.push('Escolha a matéria da falta.');
+      const nb = addAbsence(b, a.date || todayISO(now), a.count || lessonsOnDay(b, a.date || todayISO(now), settings));
+      upsert(nb);
+      const sum = absencesOf(nb, settings);
+      notes.push(`${b.name}: falta anotada${sum.status === 'near' || sum.status === 'over' ? ` · ${absenceStatusText(sum).toLowerCase()}` : ''}`);
     }
   });
   return { blocks: out, notes };

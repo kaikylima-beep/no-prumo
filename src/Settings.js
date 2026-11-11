@@ -10,6 +10,7 @@ import { pickText, saveText } from './files';
 import { makeBackup, readBackup } from './core/migrate';
 import { speechMode } from './speech';
 import { STATES } from './legacy/holidays';
+import { academicOf } from './legacy/academic';
 import { dayLabel, WEEKDAYS_SHORT } from './core/dates';
 
 export const APP_VERSION = '1.13.0';
@@ -86,6 +87,7 @@ export default function Settings({ onClose }) {
     exactAlarmOk().then(setExact);
   }, []);
   const learned = Object.entries(st.learned || {});
+  const acad = academicOf(st);
   const fixed = state.blocks.filter((b) => b.kind === 'fixed' && !b.archived);
   const backupDays = st.backupAt ? Math.floor((now.getTime() - st.backupAt) / 864e5) : null;
   const log = state.heardLog || [];
@@ -182,6 +184,24 @@ export default function Settings({ onClose }) {
           </Pressable>
         ))}
         <Btn small kind="soft" icon="plus" label="Novo horário fixo" onPress={() => open('block', { kind: 'fixed' })} style={{ alignSelf: 'flex-start' }} />
+      </Group>
+
+      <Group title="Faculdade" summary={`Média ${String(acad.passGrade).replace('.', ',')} · aula de ${acad.classMinutes} min · faltas até ${acad.absencePct}%`}>
+        <T v="s" c="soft">
+          Cada faculdade tem as suas regras. Na UTFPR: média 6, nota máxima 10, aula de 50 minutos, faltas até 25%.
+        </T>
+        {[
+          ['passGrade', 'Média para passar'],
+          ['maxGrade', 'Nota máxima'],
+          ['classMinutes', 'Duração de uma aula (min)'],
+          ['absencePct', 'Limite de faltas (%)'],
+        ].map(([k, label]) => (
+          <Row key={k}>
+            <T style={{ flex: 1 }}>{label}</T>
+            <Input value={String(acad[k]).replace('.', ',')} onChangeText={(t) => { const n = parseFloat(t.replace(',', '.')); if (Number.isFinite(n) && n > 0) setSettings({ academic: { ...acad, [k]: n } }); }} keyboardType="decimal-pad" accessibilityLabel={label} aria-label={label} style={{ width: 80, textAlign: 'center' }} />
+          </Row>
+        ))}
+        <Toggle label="Perguntar “Foi na aula?” depois de cada aula" hint="Um aviso com Fui e Faltei. Faltei conta as faltas sozinho, com o app fechado." value={!!acad.askAttendance} onChange={(askAttendance) => setSettings({ academic: { ...acad, askAttendance } })} />
       </Group>
 
       <Group title="Semestre" summary={st.semester.start && st.semester.end ? `${dayLabel(st.semester.start, now)} a ${dayLabel(st.semester.end, now)}` : 'Início e fim das aulas'}>

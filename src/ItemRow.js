@@ -18,6 +18,7 @@ export default function ItemRow({ item, showDay = true, compact, plain }) {
   const meta = [];
   if (showDay && item.date) meta.push(item.time ? `${dayLabel(item.date, now)} · ${item.time}` : dayLabel(item.date, now));
   else if (item.time) meta.push(item.endTime ? `${item.time}–${item.endTime}` : item.time);
+  if (item.times) meta.push(item.times.join(', '));
   if (item.duration) meta.push(item.duration >= 60 ? `${Math.floor(item.duration / 60)} h${item.duration % 60 ? ` ${item.duration % 60}` : ''}` : `${item.duration} min`);
   if (item.repeat) meta.push(repeatText(item.repeat));
   if (subject && !item.title.toLowerCase().includes(subject.name.toLowerCase())) meta.push(subject.name);

@@ -6,7 +6,8 @@ import { Btn, Card, Empty, Row, T, useScreenStyles } from '../ui';
 import { useStore } from '../store';
 import { useNav } from '../nav';
 import ItemRow, { Section } from '../ItemRow';
-import { absenceInfo, gradeInfo, nextClass } from '../core/model';
+import { absencesOf, asSubject, gradeOf, nextClass } from '../core/model';
+import { fmtGrade, gradesToAsk } from '../legacy/academic';
 import { dayLabel, diffDays, todayISO } from '../core/dates';
 
 const num = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -14,7 +15,8 @@ const num = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 export default function Study() {
   const c = useTheme();
   const s = useScreenStyles();
-  const { state, now } = useStore();
+  const { state, now, updateItem } = useStore();
+  const ask = useMemo(() => gradesToAsk(state.items.filter((i) => i.type === 'study'), state.blocks.filter((b) => b.kind === 'class').map(asSubject), todayISO(now)).slice(0, 2), [state.items, state.blocks]);
   const { open } = useNav();
   const today = todayISO(now);
   const upcoming = useMemo(() => state.items.filter((i) => i.type === 'study' && !i.done && i.date && i.date >= today && i.studyKind !== 'estudo').sort((a, b) => a.date.localeCompare(b.date)), [state.items, today]);
@@ -75,12 +77,30 @@ export default function Study() {
         </Section>
       ) : null}
 
+      {ask.length ? (
+        <Section title="Já saiu a nota?">
+          {ask.map((t) => (
+            <Card key={t.id} style={{ marginTop: 8, gap: 8 }}>
+              <T v="m">{t.title}</T>
+              <T v="s" c="soft">
+                {dayLabel(t.date, now)}
+                {state.blocks.find((x) => x.id === t.subjectId) ? ` · ${state.blocks.find((x) => x.id === t.subjectId).name}` : ''}
+              </T>
+              <Row wrap>
+                <Btn small label="Lançar nota" onPress={() => open('grade', { studyId: t.id })} />
+                <Btn small kind="ghost" label="Ainda não saiu · não perguntar de novo" onPress={() => updateItem(t.id, { gradeAsked: true })} />
+              </Row>
+            </Card>
+          ))}
+        </Section>
+      ) : null}
+
       <Section title="Matérias" right={<Btn small kind="soft" icon="plus" label="Matéria" onPress={() => open('block', { kind: 'class' })} />}>
         {classes.length ? (
           <View style={{ gap: 10, marginTop: 6 }}>
             {classes.map((b) => {
-              const g = gradeInfo(b);
-              const a = absenceInfo(b);
+              const g = gradeOf(b, state.settings);
+              const a = absencesOf(b, state.settings);
               const nc = nextClass(b, now);
               return (
                 <Pressable key={b.id} onPress={() => open('block', { id: b.id })} accessibilityRole="button" accessibilityLabel={`Abrir ${b.name}`} aria-label={`Abrir ${b.name}`} style={{ backgroundColor: c.card, borderRadius: 16, padding: 14, borderLeftWidth: 5, borderLeftColor: c.blocks[b.color % 8] }}>
@@ -90,20 +110,20 @@ export default function Study() {
                   </T>
                   <Row gap={18} style={{ marginTop: 10 }}>
                     <View>
-                      <T v="num" c={g.average === null ? 'faint' : g.average >= g.pass ? 'money' : 'warn'}>
-                        {g.average === null ? '—' : num(g.need !== undefined ? g.partial : g.average)}
+                      <T v="num" c={a.status === 'over' ? 'danger' : a.status === 'near' ? 'warn' : 'text'}>
+                        {a.count}
+                        {a.limit !== null ? <T c="faint">{` de ${a.limit}`}</T> : null}
                       </T>
                       <T v="s" c="soft">
-                        {g.need !== undefined ? `pontos · falta ${num(g.need)}` : g.count ? `média de ${g.count}` : 'sem notas'}
+                        {a.limit !== null ? (a.left >= 0 ? `faltas · pode mais ${a.left}` : 'faltas · passou') : a.count === 1 ? 'falta' : 'faltas'}
                       </T>
                     </View>
                     <View>
-                      <T v="num" c={a.over ? 'danger' : a.danger ? 'warn' : 'text'}>
-                        {a.count}
-                        {a.max !== null ? <T c="faint">{` / ${a.max}`}</T> : null}
+                      <T v="num" c={g.average === null ? 'faint' : g.status === 'failed' || g.status === 'impossible' ? 'danger' : g.status === 'needs' ? 'warn' : 'money'}>
+                        {g.average === null ? (g.graded ? `${g.graded}/${g.total}` : '—') : fmtGrade(g.average)}
                       </T>
                       <T v="s" c="soft">
-                        {a.count === 1 ? 'falta' : 'faltas'}
+                        {g.average !== null ? 'média' : g.graded ? 'notas lançadas' : 'sem notas'}
                       </T>
                     </View>
                   </Row>

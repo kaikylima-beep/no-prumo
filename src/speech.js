@@ -1,19 +1,20 @@
 // Reconhecimento de voz do Android (português do Brasil).
-// O Peep pede o melhor que o aparelho oferece e cai para o modo mais simples se o aparelho recusar:
-//   0. no próprio celular, com pontuação, vocabulário e 5 versões
-//   1. serviço do Google, com pontuação, vocabulário e 5 versões
-//   2. modo simples
-// O Google é escolhido pelo nome (em alguns Samsung o serviço padrão abre o Bixby).
-// A fala pode chegar em pedaços: o app junta tudo e só interpreta quando a escuta termina.
+// Precisa do app instalado (APK / development build). No Expo Go o módulo não existe,
+// então o app avisa e a pessoa pode usar o microfone do teclado.
+//
+// 1.12.1: o app pede ao Android o melhor que o aparelho oferece e cai para o modo
+// mais simples se o aparelho recusar (LEVELS):
+//   0. reconhecimento no próprio celular, com pontuação, vocabulário e 5 versões
+//   1. serviço padrão do Android, com pontuação, vocabulário e 5 versões
+//   2. o modo da 1.12 (só o texto), com 5 versões
+// A fala pode chegar em pedaços (o Android corta nas pausas): o app junta os pedaços
+// e só interpreta quando o Android encerra a escuta.
+//
+// 1.13.1: a pausa não se perde mais. Entre um pedaço e outro entra uma vírgula, e (Android 14+,
+// reconhecimento no aparelho) a pausa longa entre duas palavras também. O app guarda ainda a
+// confiança que o Android dá a cada versão, para decidir quando confiar na 1ª.
 import { useCallback, useRef, useState } from 'react';
-
-const GOOGLE_ON_DEVICE = 'com.google.android.as';
-const GOOGLE_SERVICES = ['com.google.android.tts', 'com.google.android.googlequicksearchbox'];
-export function pickService(list = [], onDevice = false) {
-  if (onDevice && list.includes(GOOGLE_ON_DEVICE)) return { pkg: GOOGLE_ON_DEVICE, offline: true };
-  const g = GOOGLE_SERVICES.find((p) => list.includes(p));
-  return g ? { pkg: g, offline: !!onDevice } : null;
-}
+import { pickService, joinPieces, pauseCommas } from './legacy/voice';
 
 let Mod = null;
 let useSpeechEvent = null;
@@ -87,34 +88,32 @@ function errorText(code) {
   }
 }
 
-// junta os pedaços: a versão k de cada pedaço (ou a 1ª, se o pedaço tiver menos versões)
-function joinSegments(segs, extra) {
-  const all = extra ? [...segs, extra] : segs;
-  if (!all.length) return [];
-  const n = Math.max(...all.map((s) => s.length));
+// junta os pedaços (com vírgula onde houve pausa): a versão k de cada pedaço, ou a 1ª se faltar
+const joinSegments = (segs, extra) => joinPieces(extra ? [...segs, extra] : segs);
+
+// confiança de cada versão da frase inteira: a menor entre os pedaços (-1 = o Android não informou)
+function joinConfidence(conf) {
+  if (!conf.length) return [];
+  const n = Math.max(...conf.map((c) => c.length));
   const out = [];
   for (let k = 0; k < n; k++) {
-    out.push(
-      all
-        .map((s) => (s[k] || s[0] || '').trim())
-        .filter(Boolean)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-    );
+    const vals = conf.map((c) => c[k]).filter((v) => typeof v === 'number' && v > 0);
+    out.push(vals.length === conf.length ? Math.min(...vals) : -1);
   }
   return out;
 }
 
-// onText(texto ao vivo), onDone(versões ouvidas, áudio), onVolume(nível)
+// onText(texto ao vivo), onDone(versões ouvidas, áudio, { conf, timing }), onVolume(nível)
 export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
   const hook = useSpeechEvent || noopHook;
-  const st = useRef({ segs: [], partial: null, gotResult: false, level: 0, startedAt: 0, audio: null, stopped: false, retrying: false, next: 0, retryTimer: null });
+  const st = useRef({ segs: [], conf: [], timing: [], partial: null, gotResult: false, level: 0, startedAt: 0, audio: null, stopped: false, retrying: false, next: 0, retryTimer: null });
 
   const options = (level) => {
     const L = LEVELS[level];
-        const svc = pickService(availableServices(), !!L.onDevice);
+    // 1.12.3: Google pelo nome quando existe (no Samsung, o serviço padrão abria o Bixby)
+    const svc = pickService(availableServices(), !!L.onDevice);
     const base = {
       lang: 'pt-BR',
       interimResults: true,
@@ -130,7 +129,7 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
       contextualStrings: (vocab && vocab()) || [],
       // sem o Google, "no celular" fica com o serviço do sistema
       requiresOnDeviceRecognition: !!L.onDevice && !svc,
-      // com o áudio guardado (Android 13+), o Android espera 2 s de silêncio antes de encerrar
+      // guarda o áudio (Android 13+): serve para "Guardar para correção" e faz o Android esperar 2 s de silêncio
       recordingOptions: { persist: true },
       androidIntentOptions: { EXTRA_MASK_OFFENSIVE_WORDS: false, ...(svc && svc.offline ? { EXTRA_PREFER_OFFLINE: true } : null) },
     };
@@ -140,6 +139,8 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
     const s = st.current;
     s.level = level;
     s.segs = [];
+    s.conf = [];
+    s.timing = [];
     s.partial = null;
     s.gotResult = false;
     s.audio = null;
@@ -202,16 +203,21 @@ export function useSpeech({ onText, onDone, onVolume, vocab, onDevice = true }) 
     const alts = joinSegments(s.segs, s.segs.length ? null : s.partial);
     if (alts.length && alts[0]) {
       workingLevel = s.level;
-      onDone(alts, s.audio);
+      onDone(alts, s.audio, { conf: joinConfidence(s.conf), timing: s.timing.slice(0, 80) });
     }
   });
   hook('result', (e) => {
-    const list = ((e && e.results) || []).map((r) => (r && r.transcript) || '').filter(Boolean);
+    const results = ((e && e.results) || []).filter((r) => r && r.transcript);
+    const list = results.map((r) => r.transcript);
     if (!list.length) return;
     const s = st.current;
     s.gotResult = true;
     if (e.isFinal) {
-      s.segs.push(list);
+      // instante de cada palavra da 1ª versão (quando o Android informa): pausa longa vira vírgula
+      const words = Array.isArray(results[0].segments) ? results[0].segments : [];
+      s.segs.push([pauseCommas(list[0], words), ...list.slice(1)]);
+      s.conf.push(results.map((r) => (typeof r.confidence === 'number' ? r.confidence : -1)));
+      words.forEach((w) => w && s.timing.push([String(w.segment || ''), Math.round(Number(w.startTimeMillis) || 0)]));
       s.partial = null;
     } else s.partial = list;
     const live = joinSegments(s.segs, e.isFinal ? null : list)[0] || '';

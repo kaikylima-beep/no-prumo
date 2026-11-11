@@ -1,7 +1,7 @@
 // Testes do Peep: node scripts/test.mjs
 // Cada frase tem o resultado esperado. Nomes de pessoas são inventados.
 import { parse } from '../src/core/nlu.js';
-import { EMPTY_STATE, applyActions, complete, dayAgenda, gradeInfo, absenceInfo, groupItems, makeBlock, makeItem, monthMoney, nextDate, nowAndNext, occursOn } from '../src/core/model.js';
+import { EMPTY_STATE, applyActions, complete, dayAgenda, gradeOf, absencesOf, groupItems, makeBlock, makeItem, monthMoney, nextDate, nowAndNext, occursOn } from '../src/core/model.js';
 import { planReminders } from '../src/core/plan.js';
 import { answer } from '../src/core/answers.js';
 import { applyLearned, diffWords, learn } from '../src/core/learn.js';
@@ -127,6 +127,44 @@ eq('tenho meia hora para', dur('tenho meia hora para arrumar a mochila'), ['Arru
 const two = applyActions([], parse('Aulas de circuitos análise de circuitos a as quintas-feiras das 21:20 até às 23 e sexta-feira das 18:20 até às 20:20', { now, subjects: [] }).actions, now).blocks;
 eq('matéria criada com os dois horários', [two[0].name, two[0].slots.length], ['Análise de circuitos', 2]);
 
+
+// ── 1.14: entender = motor da 1.13.1 + perguntas, nota, falta, horários e duração ──
+{
+  const { understand } = await import('../src/core/understand.js');
+  const { VOICE_BANK, BANK_NOW } = await import('./fixtures/banco-voz.mjs');
+  const bnow = new Date(...BANK_NOW);
+  const KIND = { task: 'task', study: 'study', money: 'finance' };
+  // "aula de X toda terça às 19h" virou horário da matéria (ação), de propósito
+  const SCHEDULE = new Set(['aula de inglês toda terça e quinta às 19h', 'aula de violão toda quarta às oito da noite']);
+  let right = 0;
+  let open = 0;
+  const wrong = [];
+  VOICE_BANK.forEach(([, phrase, expected, isOpen]) => {
+    const r = understand(phrase, { now: bnow, blocks: [] });
+    if (SCHEDULE.has(phrase)) {
+      if (r.actions[0] && r.actions[0].type === 'schedule') right++;
+      else wrong.push(phrase);
+      return;
+    }
+    const got = r.items.map((i) => ({ kind: KIND[i.type], title: i.title, date: i.date, time: i.time, amount: i.type === 'money' ? i.amount : null, type: i.type === 'money' ? i.flow : null, status: i.type === 'money' ? (i.paid ? 'paid' : 'pending') : null }));
+    const okAll = got.length === expected.length && expected.every((e, i) => Object.entries(e).every(([k, v]) => !(k in got[i]) || JSON.stringify(got[i][k] ?? null) === JSON.stringify(v)));
+    if (okAll) right++;
+    else if (isOpen) open++;
+    else wrong.push(phrase);
+  });
+  eq(`banco de fala natural pela camada nova (${right}/${VOICE_BANK.length}, ${open} abertas)`, wrong, []);
+  const U = (text, blocks = []) => understand(text, { now, blocks, settings: {} });
+  const cls = [{ id: 'c1', kind: 'class', name: 'Cálculo 2', aliases: [], slots: [{ days: [1, 3], start: '10:00', end: '12:00' }], grades: [], absences: [] }, { id: 'c2', kind: 'class', name: 'Física 1', aliases: [], slots: [{ days: [2], start: '08:00', end: '10:00' }], grades: [], absences: [] }];
+  eq('nº 5 pela camada nova', U('Aulas de circuitos análise de circuitos a as quintas-feiras das 21:20 até às 23 e sexta-feira das 18:20 até às 20:20 que isso te.').actions.map((a) => [a.name, a.slots.map((s) => `${s.days}:${s.start}-${s.end}`)]), [['Análise de circuitos', ['4:21:20-23:00', '5:18:20-20:20']]]);
+  eq('nº 6 pela camada nova', U('Eu tenho 10 minutos para lavar louça e depois disso eu tenho que arrumar o quarto em 30 minutos.').items.map((i) => [i.title, i.duration, i.time]), [['Lavar louça', 10, null], ['Arrumar o quarto', 30, null]]);
+  eq('nota e falta na mesma frase', U('tirei 7,5 na P1 de cálculo 2 e faltei na aula de física', cls).actions.map((a) => [a.type, a.subjectId, a.score || a.count]), [['grade', 'c1', 7.5], ['absence', 'c2', 2]]);
+  eq('faltei hoje = todas as aulas do dia (terça)', U('faltei hoje', cls).actions.map((a) => a.subjectId), ['c2']);
+  eq('pergunta não vira tarefa', [U('o que eu tenho amanhã?').query.q, U('o que eu tenho amanhã?').items.length], ['agenda', 0]);
+  eq('remédio 3 vezes ao dia', U('tomar remédio 3 vezes ao dia').items.map((i) => [i.repeat.freq, i.times]), [['daily', ['06:00', '14:00', '22:00']]]);
+  eq('faixa de horário guarda o fim', U('reunião das 15 às 16').items.map((i) => [i.time, i.endTime]), [['15:00', '16:00']]);
+  eq('vários gastos', U('gastei 30 no almoço 15 no uber e 8 no café').items.map((i) => [i.title, i.amount, i.paid]), [['Restaurante', 30, true], ['Uber', 15, true], ['Café', 8, true]]);
+}
+
 // ── regras ──
 let st = { ...EMPTY_STATE, items: [], blocks: [] };
 const add = (text) => {
@@ -144,7 +182,7 @@ add('tomar remédio todo dia às 21h');
 add('tirei 7,5 na P1 de cálculo 2');
 add('faltei na aula de cálculo 2 ontem');
 const calc = st.blocks.find((b) => b.name === 'Cálculo 2');
-eq('matéria criada pela voz', [calc.kind, calc.slots.length, calc.grades.length, calc.absences], ['class', 1, 1, ['2026-11-09']]);
+eq('matéria criada pela voz (falta = 2 aulas de 50 min)', [calc.kind, calc.slots.length, calc.grades.length, calc.absences.map((a) => [a.date, a.count])], ['class', 1, 1, [['2026-11-09', 2]]]);
 eq('prova ligada à matéria', st.items[0].subjectId, calc.id);
 const ag = dayAgenda(st, '2026-11-10', now);
 eq('agenda de hoje', ag.timed.map((e) => `${e.time} ${e.kind === 'block' ? e.block.name : e.item.title}`), ['15:00 Estágio', '18:00 Lavar o carro', '21:00 Tomar remédio']);
@@ -164,10 +202,12 @@ const bill = makeItem({ type: 'money', title: 'Internet', amount: 100, date: '20
 const paidBill = complete([bill], bill.id, now);
 eq('conta mensal paga: guarda o pagamento e cria a próxima', paidBill.map((i) => [i.done, i.date, !!i.repeat]), [[true, '2026-11-10', false], [false, '2026-12-12', true]]);
 eq('grupos', Object.fromEntries(Object.entries(groupItems(st.items, now)).map(([k, v]) => [k, v.length])), { late: 0, today: 2, tomorrow: 1, week: 0, later: 1, someday: 0, done: 1 });
-eq('média simples', gradeInfo({ grades: [{ score: 6 }, { score: 8 }] }).average, 7);
-const g = gradeInfo({ passGrade: 6, grades: [{ score: 5, weight: 40 }, { score: 8, weight: 20 }] });
-eq('quanto falta com pesos', [g.partial, g.remaining, Math.round(g.need * 100) / 100], [3.6, 40, 6]);
-eq('faltas', absenceInfo({ absences: ['a', 'b', 'c'], maxAbsences: 4 }), { count: 3, max: 4, left: 1, danger: true, over: false });
+eq('notas sem peso: o app não inventa média', gradeOf({ grades: [{ score: 6 }, { score: 8 }] }, {}).average, null);
+const g = gradeOf({ grades: [{ name: 'P1', score: 5, weight: 40 }, { name: 'P2', score: 8, weight: 20 }, { name: 'P3', score: null, weight: 40 }] }, {});
+eq('quanto falta com pesos', [g.average, g.needed, g.status], [6, 6, 'needs']);
+const fis = { slots: [{ days: [2], start: '08:00', end: '09:40' }], absences: [{ date: '2026-11-03', count: 2 }, { date: '2026-11-10', count: 2 }] };
+const sum = absencesOf(fis, { semester: { start: '2026-08-03', end: '2026-12-11' }, state: 'PR' });
+eq('faltas por aula de 50 min, semestre sem feriados', [sum.count, sum.total, sum.limit, sum.left], [4, 38, 9, 5]);
 // ── avisos ──
 const plan = planReminders(st, now).map((r) => `${String(r.when.getDate()).padStart(2, '0')} ${String(r.when.getHours()).padStart(2, '0')}:${String(r.when.getMinutes()).padStart(2, '0')} ${r.title} | ${r.body}`);
 eq('avisos de hoje', plan.filter((p) => p.startsWith('10 ')), ['10 14:50 Estágio | Começa às 15:00', '10 18:00 Vence amanhã | Conta de luz · R$ 120,00', '10 18:00 Lavar o carro | Agora', '10 21:00 Tomar remédio | Agora']);
@@ -179,7 +219,7 @@ eq('nada no passado', planReminders(st, now).every((r) => r.when > now), true);
 eq('resposta agenda', answer(P('o que eu tenho amanhã?').query, st, now).title, 'Amanhã: 4 coisas');
 eq('resposta gasto', answer(parse('quanto gastei com ifood este mês', { now, subjects: st.blocks }).query, st, now).title, 'Você gastou R$ 32,00 com ifood este mês.');
 eq('resposta quando', answer(parse('quando é a prova de cálculo 2', { now, subjects: st.blocks }).query, st, now).title, 'Prova de cálculo 2: sexta, 20 de novembro às 10:00 (em 10 dias).');
-eq('resposta faltas', answer(parse('quantas faltas eu tenho em cálculo 2', { now, subjects: st.blocks }).query, st, now).title, 'Cálculo 2: 1 falta.');
+eq('resposta faltas', answer(parse('quantas faltas eu tenho em cálculo 2', { now, subjects: st.blocks }).query, st, now).title, 'Cálculo 2: 2 faltas.');
 // ── dicionário pessoal ──
 eq('diferença', diffWords('fazer o pics do Rafa', 'fazer o pix do Rafa'), [['pics', 'pix']]);
 eq('número trocado não é erro de ouvido', diffWords('pagar 60 reais', 'pagar 80 reais'), []);
@@ -206,6 +246,19 @@ const pi = prumo.state.items;
 eq('Prumo: itens convertidos', pi.map((i) => [i.type, i.title, i.date, i.done, i.repeat ? i.repeat.freq : null]), [['task', 'Lavar o carro', '2026-11-12', false, null], ['task', 'Remédio', '2026-11-10', false, 'daily'], ['study', 'Prova de Cálculo', '2026-11-20', false, null], ['money', 'Mercado', '2026-11-08', true, null], ['money', 'Entre contas', '2026-11-08', true, null], ['money', 'Internet', '2026-11-12', false, 'monthly']]);
 eq('Prumo: matéria ligada', pi[2].subjectId, prumo.state.blocks[0].id);
 
+
+
+// ── 1.14: avisos "Foi na aula?" e vários horários no dia ──
+{
+  const bl = [{ id: 'b1', kind: 'class', name: 'Cálculo 2', slots: [{ days: [3], start: '10:00', end: '11:40' }], absences: [], grades: [] }];
+  const base = { ...EMPTY_STATE, items: [makeItem({ type: 'task', title: 'Remédio', date: '2026-11-10', repeat: { freq: 'daily' }, times: ['06:00', '14:00', '22:00'] }, now)], blocks: bl };
+  const off = planReminders({ ...base, settings: { ...EMPTY_STATE.settings, morning: null, classAlert: 0 } }, now).filter((r) => r.category === 'aula');
+  eq('"Foi na aula?" desligado por padrão', off.length, 0);
+  const on = planReminders({ ...base, settings: { ...EMPTY_STATE.settings, morning: null, classAlert: 0, academic: { ...EMPTY_STATE.settings.academic, askAttendance: true } } }, now).filter((r) => r.category === 'aula');
+  eq('"Foi na aula?" 5 min depois do fim, com 2 aulas', on.slice(0, 1).map((r) => [r.when.getDate(), r.when.getHours(), r.when.getMinutes(), r.title, r.data.count]), [[11, 11, 45, 'Foi na aula de Cálculo 2?', 2]]);
+  const rem = planReminders({ ...base, settings: { ...EMPTY_STATE.settings, morning: null, classAlert: 0 } }, now).filter((r) => r.title === 'Remédio').slice(0, 3).map((r) => `${r.when.getDate()} ${r.when.getHours()}h`);
+  eq('remédio 3 vezes ao dia avisa nos 3 horários', rem, ['10 22h', '11 6h', '11 14h']);
+}
 
 // ── contas, saldo e extrato (1.13) ──
 const oldData = {
