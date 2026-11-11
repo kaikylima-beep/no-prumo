@@ -7,7 +7,7 @@ import { useStore } from '../store';
 import { useNav } from '../nav';
 import ItemRow, { Section } from '../ItemRow';
 import { absenceInfo, gradeInfo, nextClass } from '../core/model';
-import { dayLabel, diffDays, todayISO, WEEKDAYS_SHORT } from '../core/dates';
+import { dayLabel, diffDays, todayISO } from '../core/dates';
 
 const num = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 
@@ -20,12 +20,10 @@ export default function Study() {
   const upcoming = useMemo(() => state.items.filter((i) => i.type === 'study' && !i.done && i.date && i.date >= today && i.studyKind !== 'estudo').sort((a, b) => a.date.localeCompare(b.date)), [state.items, today]);
   const sessions = useMemo(() => state.items.filter((i) => i.type === 'study' && !i.done && (i.studyKind === 'estudo' || !i.date || i.date < today)).sort((a, b) => (a.date || '9').localeCompare(b.date || '9')), [state.items, today]);
   const classes = state.blocks.filter((b) => b.kind === 'class' && !b.archived);
-  const fixed = state.blocks.filter((b) => b.kind === 'fixed' && !b.archived);
-  const archived = state.blocks.filter((b) => b.archived);
+  const archived = state.blocks.filter((b) => b.archived && b.kind === 'class');
   const next = upcoming[0];
   const left = next ? diffDays(today, next.date) : null;
 
-  const slotsText = (b) => (b.slots || []).map((sl) => `${sl.days.map((d) => WEEKDAYS_SHORT[d]).join(', ')} ${sl.start}`).join(' · ');
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
@@ -115,28 +113,6 @@ export default function Study() {
           </View>
         ) : (
           <Empty icon="book" title="Nenhuma matéria ainda" text="Fale “aula de cálculo segunda e quarta das 10 às 12” e eu monto a matéria com o horário." />
-        )}
-      </Section>
-
-      <Section title="Rotina fixa" right={<Btn small kind="soft" icon="plus" label="Horário" onPress={() => open('block', { kind: 'fixed' })} />}>
-        {fixed.length ? (
-          fixed.map((b) => (
-            <Pressable key={b.id} onPress={() => open('block', { id: b.id })} accessibilityRole="button" accessibilityLabel={`Abrir ${b.name}`} aria-label={`Abrir ${b.name}`} style={{ minHeight: 54, justifyContent: 'center' }}>
-              <Row gap={10}>
-                <View style={{ width: 5, height: 30, borderRadius: 3, backgroundColor: c.blocks[b.color % 8] }} />
-                <View style={{ flex: 1 }}>
-                  <T v="m">{b.name}</T>
-                  <T v="s" c="soft">
-                    {slotsText(b) || 'Sem horário'}
-                  </T>
-                </View>
-              </Row>
-            </Pressable>
-          ))
-        ) : (
-          <T c="soft" style={{ paddingVertical: 8 }}>
-            Estágio, trabalho, academia: o que tem hora certa toda semana aparece no seu dia.
-          </T>
         )}
       </Section>
 

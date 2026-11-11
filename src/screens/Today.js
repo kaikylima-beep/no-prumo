@@ -7,7 +7,8 @@ import { useStore } from '../store';
 import { useNav } from '../nav';
 import ItemRow, { Section } from '../ItemRow';
 import { dayAgenda, freeSlots, monthMoney, nowAndNext, toggleAbsence } from '../core/model';
-import { addDays, cap, formatMoney, fromISO, longDay, minutesOf, monthKey, todayISO, WEEKDAYS_SHORT } from '../core/dates';
+import { addDays, addMonths, cap, daysInMonth, formatMoney, fromISO, longDay, minutesOf, monthKey, monthLabel, toISO, todayISO, WEEKDAYS_SHORT } from '../core/dates';
+import { holidaysOfMonth } from '../legacy/holidays';
 
 const greeting = (h) => (h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite');
 const dur = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ''}`);
@@ -19,7 +20,9 @@ export default function Today() {
   const { open, go } = useNav();
   const today = todayISO(now);
   const [picked, setPicked] = useState(null);
-  const day = picked && picked >= today ? picked : today;
+  const day = picked || today;
+  const [calendar, setCalendar] = useState(false);
+  const [month, setMonth] = useState(today.slice(0, 7));
   const isToday = day === today;
   const agenda = useMemo(() => dayAgenda(state, day, now), [state, day, now]);
   const nn = isToday ? nowAndNext(agenda, now) : { current: null, next: null };
@@ -30,6 +33,22 @@ export default function Today() {
     const a = dayAgenda(state, d, now);
     return { d, busy: a.loose.length + a.timed.filter((e) => e.kind === 'item').length, exam: [...a.loose, ...a.timed.filter((e) => e.kind === 'item').map((e) => e.item)].some((i) => i.type === 'study' && i.studyKind === 'prova') };
   }), [state, today]);
+  // calendário do mês: o que tem em cada dia e os feriados do estado
+  const grid = useMemo(() => {
+    if (!calendar) return null;
+    const [y, m] = month.split('-').map(Number);
+    const holidays = holidaysOfMonth(month, state.settings.state || undefined);
+    const cells = [];
+    for (let i = 0; i < new Date(y, m - 1, 1).getDay(); i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth(y, m - 1); d++) {
+      const iso = toISO(new Date(y, m - 1, d));
+      const a = dayAgenda(state, iso, now);
+      const items = [...a.loose, ...a.timed.filter((e) => e.kind === 'item').map((e) => e.item), ...a.done];
+      cells.push({ iso, d, holiday: holidays[iso] || null, types: ['task', 'study', 'money'].filter((t) => items.some((i) => i.type === t && !i.ghost)) });
+    }
+    return { cells, holidays };
+  }, [calendar, month, state]);
+  const dayHoliday = useMemo(() => (holidaysOfMonth(day.slice(0, 7), state.settings.state || undefined)[day] || [])[0], [day, state.settings.state]);
   const empty = !agenda.timed.length && !agenda.loose.length && !agenda.late.length;
   const name = state.settings.name ? `, ${state.settings.name.split(' ')[0]}` : '';
   const title = (e) => (e.kind === 'block' ? e.block.name : e.item.title);
@@ -39,15 +58,63 @@ export default function Today() {
       <Row style={{ paddingTop: 14 }}>
         <View style={{ flex: 1 }}>
           <T v="s" c="soft">
-            {isToday ? `${greeting(now.getHours())}${name}` : 'Olhando para frente'}
+            {isToday ? `${greeting(now.getHours())}${name}` : day < today ? 'Olhando para trás' : 'Olhando para frente'}
           </T>
           <T v="hero">{isToday ? 'Hoje' : cap(longDay(day).split(',')[0])}</T>
-          <T c="soft">{longDay(day)}</T>
+          <T c="soft">
+            {longDay(day)}
+            {dayHoliday ? ` · ${dayHoliday.name}` : ''}
+          </T>
         </View>
+        <IconBtn name="calendar" label={calendar ? 'Fechar o calendário' : 'Abrir o calendário'} onPress={() => { setMonth(day.slice(0, 7)); setCalendar(!calendar); }} bg={calendar ? 'text' : 'card'} color={calendar ? 'bg' : 'soft'} style={{ marginRight: 8 }} />
         <IconBtn name="gear" label="Ajustes" onPress={() => open('settings')} bg="card" />
       </Row>
 
-      <Row gap={6} style={{ marginTop: 16 }}>
+      {grid ? (
+        <Card style={{ marginTop: 16, padding: 12 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <IconBtn name="back" label="Mês anterior" onPress={() => setMonth(addMonths(`${month}-01`, -1).slice(0, 7))} />
+            <T v="m">{monthLabel(month)}</T>
+            <IconBtn name="next" label="Próximo mês" onPress={() => setMonth(addMonths(`${month}-01`, 1).slice(0, 7))} />
+          </Row>
+          <Row gap={0}>
+            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+              <T key={i} v="s" c="faint" style={{ width: `${100 / 7}%`, textAlign: 'center', paddingVertical: 4 }}>
+                {d}
+              </T>
+            ))}
+          </Row>
+          <Row gap={0} wrap>
+            {grid.cells.map((cell, i) => {
+              const on = cell && cell.iso === day;
+              return (
+                <Pressable key={i} disabled={!cell} onPress={() => setPicked(cell.iso)} accessibilityLabel={cell ? longDay(cell.iso) : undefined} aria-label={cell ? `Dia ${cell.d}` : undefined} style={{ width: `${100 / 7}%`, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+                  {cell ? (
+                    <View style={{ width: 38, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.text : 'transparent', borderWidth: cell.iso === today && !on ? 1.5 : 0, borderColor: c.line }}>
+                      <T v={on ? 'sm' : 's'} c={on ? 'bg' : cell.holiday ? 'danger' : 'text'}>
+                        {cell.d}
+                      </T>
+                      <Row gap={2} style={{ height: 5 }}>
+                        {cell.types.map((t) => (
+                          <View key={t} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? c.bg : c[t] }} />
+                        ))}
+                      </Row>
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </Row>
+          {Object.keys(grid.holidays).length ? (
+            <T v="s" c="soft" style={{ marginTop: 6 }}>
+              {Object.entries(grid.holidays).map(([iso, hs]) => `${Number(iso.slice(8))}: ${hs[0].name}`).join(' · ')}
+            </T>
+          ) : null}
+          {day !== today ? <Btn small kind="soft" label="Voltar para hoje" onPress={() => { setPicked(null); setMonth(today.slice(0, 7)); }} style={{ alignSelf: 'flex-start', marginTop: 8 }} /> : null}
+        </Card>
+      ) : null}
+
+      <Row gap={6} style={{ marginTop: 16, display: calendar ? 'none' : 'flex' }}>
         {week.map((w) => {
           const on = w.d === day;
           return (

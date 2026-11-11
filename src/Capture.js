@@ -23,7 +23,7 @@ function actionText(a) {
 
 export default function Capture({ voice, onClose, initial }) {
   const c = useTheme();
-  const { state, now, addItems, applyActions, setSettings, say } = useStore();
+  const { state, now, addItems, applyActions, setSettings, mutate, say } = useStore();
   const { open } = useNav();
   const [text, setText] = useState(initial || '');
   const [live, setLive] = useState('');
@@ -34,10 +34,18 @@ export default function Capture({ voice, onClose, initial }) {
   const [dropped, setDropped] = useState({});
   const inputRef = useRef(null);
   const pulse = useRef(new Animated.Value(0)).current;
-  const vocab = () => [...state.blocks.map((b) => b.name), ...Object.values(state.settings.learned || {}).map((v) => v.to), 'Pix', 'prova', 'boleto', 'aula', 'estágio'].slice(0, 100);
+  const vocab = () => [...state.blocks.map((b) => b.name), ...(state.accounts || []).map((a) => a.name), ...Object.values(state.settings.learned || {}).map((v) => v.to), 'Pix', 'prova', 'boleto', 'aula', 'estágio'].slice(0, 100);
 
   const takeHeard = (list) => {
-    const first = list[0] || '';
+    // das versões que o celular ouviu, fica a que rende mais (dia, hora, valor); empate = a primeira
+    const score = (txt) => {
+      const r = parse(applyLearned(txt, strong(state.settings.learned)).text, { now, subjects: state.blocks });
+      return r.items.reduce((n, i) => n + (i.date ? 2 : 0) + (i.time ? 2 : 0) + (i.amount ? 2 : 0) + (i.title.split(' ').length <= 6 ? 1 : 0), 0) + r.actions.length * 5 + (r.query ? 4 : 0);
+    };
+    const ranked = list.filter(Boolean).map((txt, k) => ({ txt, s: score(txt) - k * 0.01 }));
+    const best = ranked.reduce((a, b) => (b.s > a.s + 1.5 ? b : a), ranked[0] || { txt: '' });
+    const first = best.txt;
+    list = [first, ...list.filter((x) => x !== first)];
     const fixed = applyLearned(first, strong(state.settings.learned));
     setHeard(first);
     setAlts(list.slice(1, 3).filter((a) => a && a !== first));
@@ -47,10 +55,10 @@ export default function Capture({ voice, onClose, initial }) {
     setEdits({});
     setDropped({});
   };
-  const speech = useSpeech({ onText: setLive, onDone: takeHeard, onVolume: (v) => pulse.setValue(Math.max(0, Math.min(1, (v + 2) / 10))), vocab });
+  const speech = useSpeech({ onText: setLive, onDone: takeHeard, onVolume: (v) => pulse.setValue(Math.max(0, Math.min(1, (v + 2) / 10))), vocab, onDevice: state.settings.voiceOnDevice !== false });
 
   useEffect(() => {
-    if (voice && speech.supported) speech.start();
+    if (voice && speech.supported && state.settings.autoListen !== false) speech.start();
     else setTimeout(() => inputRef.current && inputRef.current.focus(), 250);
     return () => speech.abort();
   }, []);
@@ -76,6 +84,12 @@ export default function Capture({ voice, onClose, initial }) {
   const save = () => {
     if (!total) return;
     if (heard && heard !== text) setSettings({ learned: learn(state.settings.learned, applyLearned(heard, strong(state.settings.learned)).text, text) });
+    // modo de teste: guarda toda fala que precisou de correção (texto, cartão ajustado ou tirado)
+    const touched = heard && (heard !== text || Object.keys(edits).length || Object.keys(dropped).length);
+    if (state.settings.testMode && touched) {
+      const entry = { id: `h${Date.now()}`, heard, alts, text, fixed: [...items.map((x) => x.it.title), ...actions.map((x) => actionText(x.a).title)], at: Date.now() };
+      mutate((s) => ({ ...s, heardLog: [entry, ...(s.heardLog || [])].slice(0, 200) }));
+    }
     const notes = actions.length ? applyActions(actions.map((x) => x.a)) : [];
     if (items.length) addItems(items.map((x) => x.it), heard || undefined);
     onClose();
@@ -169,7 +183,7 @@ export default function Capture({ voice, onClose, initial }) {
           </T>
           {items.map(({ it, i }) => {
             const color = typeColor(c, it.type);
-            const meta = [whenText(it, now), repeatText(it.repeat)].filter(Boolean).join(' · ');
+            const meta = [whenText(it, now), it.duration ? `${it.duration} min` : '', repeatText(it.repeat)].filter(Boolean).join(' · ');
             return (
               <Card key={`i${i}`} style={{ padding: 12, borderLeftWidth: 4, borderLeftColor: color }}>
                 <Row gap={10}>

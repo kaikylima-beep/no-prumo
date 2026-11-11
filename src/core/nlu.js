@@ -1144,7 +1144,8 @@ export function parseQuery(text, ctx) {
   if (/^quanto.*(gastei|gasto|saiu|torrei|paguei)/.test(s)) return { q: 'spent', term: term(/(?:gastei|gasto|saiu|torrei|paguei)\s+(?:com|de|no|na|em|o|a)\s+(?:o\s+|a\s+)?(.+)$/), range: range || { month: today.slice(0, 7), label: 'este mês' } };
   if (/^quanto.*(recebi|entrou|ganhei)/.test(s)) return { q: 'received', range: range || { month: today.slice(0, 7), label: 'este mês' } };
   if (/(quanto|o que|que|quais).*(tenho que pagar|a pagar|pra pagar|para pagar|devo|contas)/.test(s)) return { q: 'payable', range };
-  if (/(quanto|qual).*(sobr|posso gastar|saldo|ainda tenho)/.test(s)) return { q: 'balance' };
+  if (/(quanto|qual).*(saldo|tenho na conta|tenho no banco|dinheiro eu tenho|tenho de dinheiro)/.test(s)) return { q: 'saldo' };
+  if (/(quanto|qual).*(sobr|posso gastar|ainda tenho)/.test(s)) return { q: 'balance' };
   if (/(quantas faltas|posso faltar|faltas)/.test(s)) return { q: 'absences', subjectId: subject ? subject.id : null };
   if (/(media|quanto (?:eu )?preciso|nota)/.test(s)) return { q: 'grade', subjectId: subject ? subject.id : null };
   if (/^quando/.test(s)) return { q: 'when', term: term(/^quando\s+(?:e|eh|vai ser|sera|que e|tenho|eu tenho|vence|cai)?\s*(?:a\s+|o\s+|minha\s+|meu\s+|as\s+|os\s+)?(.+)$/), subjectId: subject ? subject.id : null };

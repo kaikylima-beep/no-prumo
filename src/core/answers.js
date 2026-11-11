@@ -3,6 +3,7 @@
 import { addDays, dayLabel, formatMoney, longDay, monthKey, relLabel, todayISO } from './dates.js';
 import { absenceInfo, dayAgenda, gradeInfo, monthMoney } from './model.js';
 import { norm } from './nlu.js';
+import { balances } from './money.js';
 
 const inRange = (iso, range) => !!iso && (range.month ? monthKey(iso) === range.month : iso >= range.from && iso <= range.to);
 const num = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -56,6 +57,12 @@ export function answer(q, state, now = new Date()) {
     const total = hits.reduce((s, it) => s + it.amount, 0);
     if (!hits.length) return { title: 'Nenhuma conta para pagar.', lines: [], ids: [] };
     return { title: `${hits.length} ${hits.length === 1 ? 'conta' : 'contas'} para pagar: ${money(total)}`, lines: [{ head: null, rows: hits.slice(0, 8).map((it) => `${it.date ? dayLabel(it.date, now) : 'Sem data'} · ${it.title} · ${money(it.amount)}`) }], ids: hits.map((h) => h.id) };
+  }
+
+  if (q.q === 'saldo') {
+    const b = balances(state);
+    if (!b.hasKnown) return { title: 'Ainda não sei o seu saldo.', lines: [{ head: null, rows: ['Em Dinheiro, importe um extrato ou informe quanto tem em uma conta.'] }], ids: [] };
+    return { title: `Seu saldo é ${money(b.money)}.`, lines: [{ head: null, rows: b.rows.filter((r) => r.known).map((r) => `${r.name}: ${r.kind === 'cartao' ? `fatura ${money(Math.max(0, -r.balance))}` : money(r.balance)}`) }], ids: [] };
   }
 
   if (q.q === 'balance') {
